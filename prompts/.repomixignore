@@ -1,0 +1,122 @@
+# --- Output & Dependencies ---
+node_modules/
+.next/
+out/
+build/
+dist/
+.cache/
+.pnpm-store/
+pnpm-lock.yaml
+pnpm-workspace.yaml
+package-lock.json
+yarn.lock
+bun.lockb
+.wrangler/
+.vercel/
+.turbo/
+
+# --- Tooling & Temporary Files ---
+.rep_state.json
+.rep_temp/
+repomix.config.json
+repomix-output.md
+repomix-output.xml
+*.log
+*.tmp
+*.bak
+*.swp
+.DS_Store
+Thumbs.db
+.env*
+.git/
+.github/
+.vscode/
+.gitignore
+.repomixignore
+.eslintignore
+.prettierignore
+.editorconfig
+
+# --- UI Components & Styling ---
+# Escludiamo i componenti UI (Shadcn e simili) perché sono boilerplate che appesantiscono l'analisi della logica di business
+src/components/ui/
+components/ui/
+src/styles/
+**/webfonts/
+**/fonts/
+# Escludiamo i file CSS tranne globals.css (che spesso contiene direttive tailwind importanti)
+**/*.scss
+**/*.sass
+**/*.less
+# src/app/globals.css viene mantenuto implicitamente
+
+# --- Test, Playground & Demo ---
+src/app/_pagine-test/
+**/_test/
+**/_playground/
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/tests/
+**/__tests__/
+
+# --- Standard Config & Boilerplate ---
+# Rimuoviamo i file di config che l'LLM non deve modificare per compiti di logica/feature
+components.json
+tsconfig.json
+jsconfig.json
+next-env.d.ts
+postcss.config.*
+eslint.config.*
+tailwind.config.*
+next.config.ts
+next.config.js
+open-next.config.ts
+.prettierrc*
+
+# --- Cloudflare & Deployment Tools ---
+.dev.vars
+# wrangler.toml e wrangler.jsonc vengono mantenuti per contesto deploy
+# docker-compose.yml e ecosystem.config.js sono mantenuti come richiesto
+
+# --- Database & Migrations ---
+prisma/migrations/
+drizzle/migrations/
+supabase/migrations/
+*.sql
+*.sqlite
+*.db
+
+# --- Documentation, Media & Assets ---
+public/
+assets/
+static/
+**/img/
+**/images/
+**/*.svg
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.ico
+**/*.pdf
+**/*.webp
+**/*.mp4
+**/*.mov
+**/*.md
+**/*.csv
+**/*.json
+**/*.xml
+**/*.woff
+**/*.woff2
+**/*.ttf
+**/*.eot
+LICENSE
+*.txt
+
+# --- Local Scripts & Automation ---
+update_codebase.py
+*.sh
+scripts/
+# *.py rimosso per sicurezza, ma manteniamo i file specifici richiesti

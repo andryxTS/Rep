@@ -10,6 +10,7 @@ import hashlib
 import re
 import shutil
 import platform
+import re
 from colorama import init, Fore, Style
 
 # Inizializza colorama
@@ -22,7 +23,9 @@ TEMP_DIR = ".rep_temp"  # Nuova cartella temporanea
 REPOMIX_OUTPUT_FILENAME = "repomix-output.xml"
 PROMPT_FILENAME = "PROMPT.md"
 
-PROMPTS_DIR = os.path.expanduser("~/.rep_prompts")
+# PROMPTS_DIR = os.path.expanduser("~/.rep_prompts")  // SOSTITUITO, COSÌ GIT MI TRACCIA I PROMPT
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROMPTS_DIR = os.path.join(BASE_DIR, "prompts")
 PROMPT_ANALYSIS_FILE = os.path.join(PROMPTS_DIR, "1_analysis.md")
 PROMPT_EXECUTE_FILE = os.path.join(PROMPTS_DIR, "2_execute.md")
 GLOBAL_IGNORE_FILE = os.path.join(PROMPTS_DIR, ".repomixignore")
@@ -244,6 +247,116 @@ def apply_snippet(file_path, original_block, edit_block):
         return True
     return False
 
+def normalize_line(line):
+    """
+    Pulisce una riga per il confronto 'fuzzy':
+    - Rimuove spazi a inizio/fine.
+    - Rimuove commenti (// o #).
+    - Riduce spazi multipli interni a uno solo.
+    Restituisce None se la riga diventa vuota dopo la pulizia.
+    """
+    # Rimuove whitespace laterali
+    line = line.strip()
+    
+    # Rimuove i commenti (gestione base per python/js/jsonc)
+    if line.startswith('//') or line.startswith('#'):
+        return None
+        
+    # Se la riga è vuota, la ignoriamo
+    if not line:
+        return None
+        
+    # Normalizza gli spazi interni (es. "def  func" diventa "def func")
+    return re.sub(r'\s+', ' ', line)
+
+def apply_snippet_fuzzy(file_path, original_block, edit_block):
+    if not os.path.exists(file_path):
+        return False
+
+    # 1. Leggiamo il file originale preservando tutto
+    with open(file_path, 'r', encoding='utf-8') as f:
+        original_lines = f.readlines()
+
+    # 2. Creiamo la mappa "Searchable" del file
+    # Ogni elemento è una tupla: (indice_reale_nel_file, contenuto_normalizzato)
+    file_map = []
+    for idx, line in enumerate(original_lines):
+        norm = normalize_line(line)
+        if norm:
+            file_map.append((idx, norm))
+
+    # 3. Creiamo la sequenza "Target" dallo snippet originale
+    # Qui ci serve solo il contenuto normalizzato
+    target_sequence = []
+    for line in original_block.splitlines():
+        norm = normalize_line(line)
+        if norm:
+            target_sequence.append(norm)
+
+    if not target_sequence:
+        print(f"[Warning] Lo snippet originale conteneva solo commenti o spazi vuoti.")
+        return False
+
+    # 4. Algoritmo di ricerca della sequenza (Sliding Window)
+    match_found = False
+    start_real_index = -1
+    end_real_index = -1
+    
+    # Cerchiamo la sequenza target dentro la mappa del file
+    n_file = len(file_map)
+    n_target = len(target_sequence)
+
+    for i in range(n_file - n_target + 1):
+        # Estraiamo una "finestra" di righe normalizzate dal file
+        window = [item[1] for item in file_map[i : i + n_target]]
+        
+        # Confrontiamo con lo snippet cercato
+        if window == target_sequence:
+            # TROVATO!
+            # Recuperiamo gli indici reali dal primo e dall'ultimo elemento del match
+            start_real_index = file_map[i][0]
+            end_real_index = file_map[i + n_target - 1][0]
+            match_found = True
+            break
+
+    if match_found:
+        # 1. Recuperiamo l'indentazione originale della prima riga
+        first_orig_line = original_lines[start_real_index]
+        indent_match = re.match(r"^\s*", first_orig_line)
+        original_indent = indent_match.group(0) if indent_match else ""
+
+        # 2. Pulizia: togliamo invii/spazi SOLO in coda e invii in testa
+        # Ma NON facciamo lo strip degli spazi in testa per non distruggere tutto
+        clean_edit = edit_block.lstrip('\r\n').rstrip()
+        edit_lines = clean_edit.splitlines()
+
+        if edit_lines:
+            # 3. Applichiamo l'indentazione originale alla prima riga
+            edit_lines[0] = original_indent + edit_lines[0].lstrip()
+            
+            # 4. Ricostruiamo il segmento. 
+            # Aggiungiamo \n a tutte le righe tranne l'ultima del blocco.
+            new_segment = [line + '\n' for line in edit_lines[:-1]]
+            
+            # 5. Gestione dell'ultima riga del blocco
+            last_line_content = edit_lines[-1]
+            # Se la riga originale che stiamo sostituendo aveva un \n, lo rimettiamo
+            if original_lines[end_real_index].endswith('\n'):
+                new_segment.append(last_line_content + '\n')
+            else:
+                new_segment.append(last_line_content)
+
+        # 6. Sostituzione effettiva
+        original_lines[start_real_index : end_real_index + 1] = new_segment
+
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.writelines(original_lines)
+            
+        print(f"✅ Snippet applicato (Perfetto) a: {file_path}")
+        return True
+
+    return False
+
 def get_file_hashes():
     hashes = {}
     for root, dirs, files in os.walk("."):
@@ -274,13 +387,15 @@ def cmd_apply():
     for file_node in root.findall('file'):
         path = file_node.get('path')
         content = clean_code_content(file_node.text or "")
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+        dirname = os.path.dirname(path)
+        if dirname:
+            os.makedirs(dirname, exist_ok=True)
         with open(path, 'w', encoding='utf-8') as f: f.write(content)
         print_success(f"[FILE] Scritto: {path}")
         changes_count += 1
 
     for snippet in root.findall('snippet'):
-        if apply_snippet(snippet.get('path'), 
+        if apply_snippet_fuzzy(snippet.get('path'), 
                          clean_code_content(snippet.find('original').text), 
                          clean_code_content(snippet.find('edit').text)):
             changes_count += 1
@@ -388,16 +503,16 @@ def cmd_ignore():
 
         1. Il contenuto dell'attuale .repomixignore (da tenere e solo integrare)
         ```
-        (contenuto del file .repomixignore se presente nella cartella di lavoro, o se non presente del file .repomixignore nella cartella .rep_prompts)
+        {current_ignore}
         ```
 
         2. La lista dei file che repomix attualmente mi include nel suo file di output
         ```
-        INSERIRE_QUA_ELENCO_FILE_REPOMIX_OUTPUT
+        {file_list}
         ```
 
         3. Eccezioni
-        Sui seguenti file fai un'eccezione, mantienili nell'output di repomix se sono presenti, perché capita che a volte ho proprio problemi nel deploy, e poi preferisco dare queste informazioni in più all'LLM, d'altronde sono anche file di poche decine di righe:
+        Sui seguenti file fai un'eccezione, mantienili nell'output di repomix se sono presenti, (ma non serve metterli con il punto esclamativo per assicurarti che vengano mantenuti):
         docker-compose.yml
         ecosystem.config.js
         proxy.ts
