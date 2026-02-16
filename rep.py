@@ -12,6 +12,7 @@ import shutil
 import platform
 import re
 import fnmatch
+import shutil
 from colorama import init, Fore, Style
 
 # Inizializza colorama
@@ -39,7 +40,7 @@ DEFAULT_ANALYSIS_PROMPT = """
 
 **Input:**
 In allegato a questo messaggio trovi due file:
-1. `repomix-output.xml`: L'intero codebase del progetto.
+1. `repomix-output.txt`: L'intero codebase del progetto.
 2. Questo file `PROMPT.md` con le istruzioni.
 
 **Task:**
@@ -172,7 +173,7 @@ def clean_code_content(content):
 
 # --- CORE FUNCTIONS ---
 
-def cmd_init():
+def cmd_init(auto_input=None):
     ensure_prompts_exist()
 
     # --- Controllo presenza RepomixIgnore ---
@@ -199,10 +200,14 @@ def cmd_init():
             trigger_ignore = True
 
     if trigger_ignore:
-        input("PREMERE un tasto qualsiasi per procedere con l'ottimizzazione di Repomix tramite chatbot...")
-        cmd_ignore()
-        print("\n" + "="*40 + "\n")
-        print_step("Riprendo l'inizializzazione del progetto...")
+        # Se c'è auto_input (modalità automatica), saltiamo il blocco interattivo dell'ignore per non interrompere il flusso
+        if not auto_input:
+            input("PREMERE un tasto qualsiasi per procedere con l'ottimizzazione di Repomix tramite chatbot...")
+            cmd_ignore()
+            print("\n" + "="*40 + "\n")
+            print_step("Riprendo l'inizializzazione del progetto...")
+        else:
+            print_warn("Ignoro ottimizzazione .repomixignore per flusso automatico.")
     # --------------------------------------
     
     # 1. Preparazione Temp
@@ -227,15 +232,18 @@ def cmd_init():
         return
 
     # 3. Input Utente e Creazione Prompt File
-    user_input = get_multiline_input("Descrivi l'obiettivo delle modifiche")
+    if auto_input:
+        user_input = auto_input
+        print_step("Input acquisito automaticamente dal report errori.")
+    else:
+        user_input = get_multiline_input("Descrivi l'obiettivo delle modifiche")
     
     with open(PROMPT_ANALYSIS_FILE, "r", encoding="utf-8") as f: template = f.read()
     
     # Gestione intelligente del placeholder {codebase}
-    # Se il template vecchio lo ha ancora, lo togliamo o lo sostituiamo con un avviso
     final_prompt = template.replace("{user_input}", user_input)
     if "{codebase}" in final_prompt:
-        final_prompt = final_prompt.replace("{codebase}", "[VEDI FILE ALLEGATO: repomix-output.xml]")
+        final_prompt = final_prompt.replace("{codebase}", "[VEDI FILE ALLEGATO: repomix-output.txt]")
     
     with open(prompt_path, "w", encoding="utf-8") as f: f.write(final_prompt)
     print_success(f"File creato: {prompt_path}")
@@ -254,11 +262,10 @@ def cmd_init():
         print("👉 Ho aperto la cartella. Seleziona i 2 file e trascinali nella chat.")
 
     # 5. Attesa Feedback
-    # print(f"\n{Fore.MAGENTA}Quando hai ricevuto l'analisi dal chatbot, premi INVIO per lo Step 2...{Style.RESET_ALL}")
-    # input()
-
-    print(f"\n{Fore.YELLOW}👉 2. Quando hai ricevuto l'analisi dal chatbot, inserisci il tuo feedback di seguito:{Style.RESET_ALL}")
-    feedback_input = input()
+    print(f"\n{Fore.YELLOW}👉 2. Quando hai ricevuto l'analisi dal chatbot, inserisci il tuo feedback di seguito:\n(lascia vuoto per lasciar decidere all'LLM tutto in autonomia){Style.RESET_ALL}")
+    feedback_input = input().strip()
+    if not feedback_input:
+        feedback_input = "Fai tu in autonomia le scelte che ritieni più opportune, mi fido."
 
     # 6. Pulizia Temp e Step 2
     if os.path.exists(TEMP_DIR): 
@@ -567,7 +574,7 @@ def cmd_apply():
     else:
         print_success("Tutte le modifiche sono state applicate con successo.")
 
-def cmd_mod():
+def cmd_mod(auto_input=None):
     old_hashes = {}
     if os.path.exists(STATE_FILE):
         with open(STATE_FILE, 'r') as f: old_hashes = json.load(f)
@@ -575,23 +582,176 @@ def cmd_mod():
     current = get_file_hashes()
     modified = [p for p, h in current.items() if p not in old_hashes or old_hashes[p] != h]
     
-    if not modified: return print_success("Nessuna modifica locale rilevata.")
+    if not modified: 
+        print_success("Nessuna modifica locale rilevata.")
+        return False # Segnala che non è stato fatto nulla
+    
     print_warn(f"{len(modified)} file modificati localmente.")
     
-    req = get_multiline_input("Richiesta:")
+    # Gestione input automatico o manuale
+    if auto_input:
+        req = auto_input
+        print_step("Input acquisito automaticamente dal report errori.")
+    else:
+        req = get_multiline_input("Richiesta:")
+
     xml = "<modified_files>\n" + "".join([f' <file path="{p}"><![CDATA[\n{open(p,"r",encoding="utf-8").read()}\n]]></file>\n' for p in modified]) + "</modified_files>"
     
     pyperclip.copy(f"{req}\n\n[ATTENZIONE, avviso automatico di sistema: dall'ultimo aggiornamento sono stati modificati alcuni file, che verranno riportati qui sotto e verranno considerati la nuova versione di riferimento:]\n```{xml}```")
-    print_success("Copiato negli appunti.")
+    print_success("Prompt con file modificati copiato negli appunti.")
     save_state()
+    return True
 
 def cmd_check():
-    out = run_command("npx tsc --noEmit", capture=True)
-    if not out: print_success("Nessun errore TS.")
-    else:
-        pyperclip.copy(f"Correggi questi errori TS:\n```\n{out}\n```")
-        print_success("Errori copiati negli appunti.")
+    # --- 1. RICERCA TSC LOCALE ---
+    local_tsc_unix = os.path.join("node_modules", ".bin", "tsc")
+    local_tsc_win = os.path.join("node_modules", ".bin", "tsc.cmd")
+    
+    def get_local_tsc():
+        if os.path.exists(local_tsc_unix): return local_tsc_unix
+        if os.path.exists(local_tsc_win): return local_tsc_win
+        return None
 
+    tsc_path = get_local_tsc()
+
+    # --- 2. MENU INSTALLAZIONE (Se necessario) ---
+    if not tsc_path:
+        print_warn("TypeScript locale non trovato (node_modules mancante?).")
+        print(f"{Fore.YELLOW}Senza dipendenze, l'analisi genererà molti falsi positivi.{Style.RESET_ALL}")
+        print("\nVuoi installare le dipendenze ora?")
+        print(f"{Fore.CYAN}1) pnpm install (Default){Style.RESET_ALL}")
+        print(f"{Fore.CYAN}2) npm install{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}3) Salta (Usa tsc globale se presente){Style.RESET_ALL}")
+        
+        choice = input(f"\nScelta [1]: ").strip()
+        
+        install_cmd = None
+        if choice == "" or choice == "1":
+            install_cmd = "pnpm install"
+        elif choice == "2":
+            install_cmd = "npm install"
+        
+        if install_cmd:
+            print_step(f"Eseguo: {install_cmd} ...")
+            try:
+                subprocess.run(install_cmd, shell=True, check=True)
+                print_success("Installazione completata.")
+                # Riprova a cercare tsc locale dopo l'installazione
+                tsc_path = get_local_tsc()
+                if tsc_path:
+                    print_success(f"Trovato tsc locale: {tsc_path}")
+            except Exception as e:
+                print_error(f"Errore durante l'installazione: {e}")
+                print_warn("Proseguo con il controllo usando le risorse disponibili...")
+
+    # --- 3. FALLBACK SU GLOBALE ---
+    if not tsc_path:
+        if shutil.which("tsc"):
+            tsc_path = "tsc"
+            print_warn("Uso tsc globale.")
+        else:
+            print_error("Non ho trovato né tsc locale né globale.")
+            print("Per favore installa TypeScript o le dipendenze del progetto.")
+            return
+
+    # --- 4. ESECUZIONE ANALISI ---
+    print_step("Analisi TypeScript in corso...")
+
+    # --noEmit: solo check
+    # --skipLibCheck: ignora errori dentro le librerie (fondamentale)
+    # --pretty false: formato facile da leggere per python
+    cmd = f'"{tsc_path}" --noEmit --skipLibCheck --incremental --pretty false'
+
+    try:
+        # Timeout 60s
+        result = subprocess.run(
+            cmd, shell=True, check=False, text=True, capture_output=True, encoding='utf-8', errors='replace', timeout=60
+        )
+    except subprocess.TimeoutExpired:
+        return print_error("Timeout: il controllo ci sta mettendo troppo.")
+    
+    if result.returncode == 0:
+        return print_success("✅ Nessun errore TypeScript rilevato.")
+
+    # --- 5. FILTRO E REPORT ---
+    raw_output = result.stdout + "\n" + result.stderr
+    lines = raw_output.splitlines()
+    
+    filtered_errors = []
+    missing_modules_count = 0
+    patterns = load_ignore_patterns()
+    
+    # Regex per catturare "path/to/file.ts(10,20): error TSxxxx: ..."
+    error_pattern = re.compile(r'^([^\s(].+?)\(\d+,\d+\):\s+error\s+(TS\d+):(.+)')
+
+    for line in lines:
+        line = line.strip()
+        match = error_pattern.match(line)
+        
+        if match:
+            file_path = match.group(1)
+            error_code = match.group(2)
+            
+            # A. FILTRO IGNORE
+            if is_ignored(file_path, patterns):
+                continue
+            
+            # B. FILTRO RUMORE
+            if error_code in ["TS2307", "TS7026", "TS2580"]:
+                missing_modules_count += 1
+                continue 
+
+            filtered_errors.append(line)
+
+    # REPORT FINALE
+    if missing_modules_count > 0:
+        print_warn(f"Nascosti {missing_modules_count} errori di configurazione (tipi mancanti).")
+
+    if not filtered_errors:
+        print_success("✅ Nessun errore logico trovato nei file sorgente.")
+    else:
+        # Costruzione del prompt per LLM (Testo aggiornato come richiesto)
+        ts_report = "\n".join(filtered_errors)
+        prompt_message = (
+            "Ho eseguito un controllo del typescript con tsc e ho ottenuto questi errori:\n"
+            f"```typescript\n{ts_report}\n```\n\n"
+            "Proponimi delle soluzioni, chiedimi prima il feedback se c'è da prendere delle decisioni, "
+            "e nell'eseguire le correzioni effettive usa il formato di output XML già concordato."
+        )
+
+        print_error(f"❌ Trovati {len(filtered_errors)} errori logici nel codice sorgente.")
+        print("\nAnteprima:")
+        for err in filtered_errors[:5]:
+            print(f"  {Fore.RED}• {err}{Style.RESET_ALL}")
+        
+        # --- MENU DI SCELTA ---
+        print(f"\n{Fore.YELLOW}Come vuoi procedere?{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}1) Avvia processo di correzione completo (Init + Repomix) [Default]{Style.RESET_ALL}")
+        print(f"{Fore.CYAN}2) Genera solo il prompt (include eventuali modifiche recenti ai file){Style.RESET_ALL}")
+        print(f"{Fore.CYAN}3) Non fare nulla{Style.RESET_ALL}")
+        
+        choice = input(f"\nScelta [1]: ").strip()
+        
+        if choice in ["", "1"]:
+            # Opzione 1: Init Completo
+            cmd_init(auto_input=prompt_message)
+            
+        elif choice == "2":
+            # Opzione 2: Solo Prompt (Smart)
+            # Tenta di usare cmd_mod per includere i file modificati
+            modified_found = cmd_mod(auto_input=prompt_message)
+            
+            # Se cmd_mod non ha trovato file (ha restituito False), copiamo il prompt liscio
+            if not modified_found:
+                pyperclip.copy(prompt_message)
+                print_success("Nessun file modificato localmente. Copiato solo il report errori.")
+            else:
+                # cmd_mod ha già copiato il prompt arricchito con i file xml
+                pass
+                
+        else:
+            print("Operazione annullata.")
+            
 def cmd_ignore():
     ensure_prompts_exist()
     print_step("Preparazione suggerimento .repomixignore...")

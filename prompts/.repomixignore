@@ -36,6 +36,7 @@ Thumbs.db
 .eslintignore
 .prettierignore
 .editorconfig
+*.tsbuildinfo
 
 # --- UI Components & Styling ---
 # Escludiamo i componenti UI (Shadcn e simili) perché sono boilerplate che appesantiscono l'analisi della logica di business
