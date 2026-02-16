@@ -3,7 +3,7 @@ Ho una app e voglio apportare alcune modifiche.
 
 **Input:**
 In allegato a questo messaggio trovi due file:
-1. `repomix-output.xml`: L'intero codebase del progetto.
+1. `repomix-output.txt`: L'intero codebase del progetto.
 2. Questo file `PROMPT.md` con le istruzioni.
 
 **Task:**

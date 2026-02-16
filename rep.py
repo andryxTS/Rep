@@ -21,7 +21,7 @@ init(autoreset=True)
 STATE_FILE = ".rep_state.json"
 REPOMIX_IGNORE = ".repomixignore"
 TEMP_DIR = ".rep_temp"  # Nuova cartella temporanea
-REPOMIX_OUTPUT_FILENAME = "repomix-output.xml"
+REPOMIX_OUTPUT_FILENAME = "repomix-output.txt"
 PROMPT_FILENAME = "PROMPT.md"
 
 # PROMPTS_DIR = os.path.expanduser("~/.rep_prompts")  // SOSTITUITO, COSÌ GIT MI TRACCIA I PROMPT
@@ -160,15 +160,49 @@ def get_multiline_input(prompt_text):
 
 def clean_code_content(content):
     if not content: return ""
-    content = content.strip()
+    content = content.strip() # Questo pulisce FUORI dai backtick (sicuro)
     pattern = r"^```[a-zA-Z0-9]*\n?(.*?)```$"
     match = re.search(pattern, content, re.DOTALL)
-    return match.group(1) if match else content
+    if match:
+        # rstrip() rimuove spazi/invii SOLO dalla fine della stringa
+        # preservando l'indentazione iniziale
+        return match.group(1).rstrip()
+    return content
 
 # --- CORE FUNCTIONS ---
 
 def cmd_init():
     ensure_prompts_exist()
+
+    # --- Controllo presenza RepomixIgnore ---
+    trigger_ignore = False
+    local_lines = 0
+    global_lines = 0
+    
+    # Conta righe significative file locale
+    if os.path.exists(REPOMIX_IGNORE):
+        with open(REPOMIX_IGNORE, 'r', encoding='utf-8', errors='ignore') as f:
+            local_lines = len([l for l in f if l.strip()])
+    else:
+        print_warn(f"File {REPOMIX_IGNORE} mancante.")
+        trigger_ignore = True
+
+    # Conta righe significative file globale (se esiste) e confronta
+    if not trigger_ignore and os.path.exists(GLOBAL_IGNORE_FILE):
+        with open(GLOBAL_IGNORE_FILE, 'r', encoding='utf-8', errors='ignore') as f:
+            global_lines = len([l for l in f if l.strip()])
+        
+        if local_lines < global_lines:
+            print()
+            print_warn(f"Il tuo {REPOMIX_IGNORE} ({local_lines} righe) sembra meno completo del globale ({global_lines} righe).")
+            trigger_ignore = True
+
+    if trigger_ignore:
+        input("PREMERE un tasto qualsiasi per procedere con l'ottimizzazione di Repomix tramite chatbot...")
+        cmd_ignore()
+        print("\n" + "="*40 + "\n")
+        print_step("Riprendo l'inizializzazione del progetto...")
+    # --------------------------------------
     
     # 1. Preparazione Temp
     if os.path.exists(TEMP_DIR): shutil.rmtree(TEMP_DIR)
@@ -276,6 +310,7 @@ def normalize_line(line):
 
 def apply_snippet_fuzzy(file_path, original_block, edit_block):
     if not os.path.exists(file_path):
+        print_warn(f"[Snippet] File non trovato: {file_path}")
         return False
 
     # 1. Leggiamo il file originale preservando tutto
@@ -299,7 +334,7 @@ def apply_snippet_fuzzy(file_path, original_block, edit_block):
             target_sequence.append(norm)
 
     if not target_sequence:
-        print(f"[Warning] Lo snippet originale conteneva solo commenti o spazi vuoti.")
+        print_warn(f"Lo snippet originale conteneva solo commenti o spazi vuoti.")
         return False
 
     # 4. Algoritmo di ricerca della sequenza (Sliding Window)
@@ -361,7 +396,7 @@ def apply_snippet_fuzzy(file_path, original_block, edit_block):
         return True
     
     else:
-        print(f"[Warning] Lo snippet originale non coincide: {file_path}")
+        print_warn(f"Lo snippet originale non coincide: {file_path}")
 
     return False
 
@@ -391,6 +426,7 @@ def cmd_apply():
 
     changes_count = 0
     shell_commands = []
+    failed_snippets = []
 
     for file_node in root.findall('file'):
         path = file_node.get('path')
@@ -403,10 +439,19 @@ def cmd_apply():
         changes_count += 1
 
     for snippet in root.findall('snippet'):
-        if apply_snippet_fuzzy(snippet.get('path'), 
-                         clean_code_content(snippet.find('original').text), 
-                         clean_code_content(snippet.find('edit').text)):
+        path = snippet.get('path')
+        # Gestione sicura dei nodi figlio
+        original_node = snippet.find('original')
+        edit_node = snippet.find('edit')
+        
+        original_text = clean_code_content(original_node.text) if original_node is not None else ""
+        edit_text = clean_code_content(edit_node.text) if edit_node is not None else ""
+
+        # Tenta l'applicazione
+        if apply_snippet_fuzzy(path, original_text, edit_text):
             changes_count += 1
+        else:
+            failed_snippets.append(path)
 
     for del_node in root.findall('delete_file'):
         path = del_node.get('path')
@@ -420,11 +465,28 @@ def cmd_apply():
 
     save_state()
     
+    
     if shell_commands:
         print(f"\n{Fore.YELLOW}Comandi shell suggeriti:{Style.RESET_ALL}")
         for cmd in shell_commands: print(f"> {cmd}")
         if input("\nEseguire? (y/n): ").lower() == 'y':
             for cmd in shell_commands: run_command(cmd, capture=False)
+
+    # NUOVO: Gestione fallimenti e generazione prompt di ripristino
+    if failed_snippets:
+        print_error(f"\nAttenzione: {len(failed_snippets)} snippet non sono stati applicati.")
+        # Formatta la lista dei file per il prompt
+        file_list_str = "\n".join([f"- {f}" for f in failed_snippets])
+        recovery_prompt = f"""Le seguenti patch in modalità Snippet non hanno funzionato (match non perfetto con l'originale), perciò ti chiedo per questi file di riscrivermi l'output, questa volta usando la modalità FULL REWRITE; attenzione doppia alla fedeltà con i file originali: 
+            {file_list_str}"""
+        pyperclip.copy(recovery_prompt)
+        print_success("✅ Prompt di ripristino copiato negli appunti!\n")
+        print("👉 1. Incolla il prompt nella chat per far correggere all'LLM i file rimanenti.")
+        print("👉 2. Poi COPIA la sua risposta qui e premi INVIO.")
+        input()
+        cmd_apply()
+    else:
+        print_success("Tutte le modifiche sono state applicate con successo.")
 
 def cmd_mod():
     old_hashes = {}
@@ -538,9 +600,8 @@ def cmd_ignore():
     print_success("Prompt per l'ottimizzazione ignore copiato negli appunti!")
     
     # 4. Acquisizione con normalizzazione forzata
-    print(f"\n{Fore.YELLOW}INCOLLA gli appunti sul chatbot per generare il Prompt.{Style.RESET_ALL}")    
-    print(f"{Fore.YELLOW}... (attendi la sua risposta) ...{Style.RESET_ALL}")  
-    print(f"{Fore.YELLOW}Quindi COPIA la risposta del chatbot negli appunti e premi INVIO.{Style.RESET_ALL}")
+    print(f"\n{Fore.YELLOW}👉 1. INCOLLA gli appunti sul chatbot per generare il Prompt.{Style.RESET_ALL}")    
+    print(f"{Fore.YELLOW}👉 2. COPIA la risposta del chatbot negli appunti e premi INVIO.{Style.RESET_ALL}")
     input()
 
     raw_clipboard = pyperclip.paste()
