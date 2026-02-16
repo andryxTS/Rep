@@ -11,6 +11,7 @@ import re
 import shutil
 import platform
 import re
+import time
 from colorama import init, Fore, Style
 
 # Inizializza colorama
@@ -211,7 +212,7 @@ def cmd_init():
     print_step("--- PRONTO PER IL CHATBOT ---")
     if copied:
         print_success("✅ I 2 file (PROMPT.md e XML) sono stati copiati negli appunti!")
-        print("👉 Vai nella chat e premi CTRL+V (Incolla).")
+        print("👉 1. Vai nella chat e premi CTRL+V (Incolla).")
     else:
         print_warn("Impossibile copiare i file automaticamente.")
         open_folder(TEMP_DIR)
@@ -221,7 +222,7 @@ def cmd_init():
     # print(f"\n{Fore.MAGENTA}Quando hai ricevuto l'analisi dal chatbot, premi INVIO per lo Step 2...{Style.RESET_ALL}")
     # input()
 
-    print(f"\n{Fore.YELLOW}Quando hai ricevuto l'analisi dal chatbot, inserisci il tuo feedback di seguito:{Style.RESET_ALL}")
+    print(f"\n{Fore.YELLOW}👉 2. Quando hai ricevuto l'analisi dal chatbot, inserisci il tuo feedback di seguito:{Style.RESET_ALL}")
     feedback_input = input()
 
     # 6. Pulizia Temp e Step 2
@@ -233,9 +234,13 @@ def cmd_init():
     final_exec_prompt = template.replace("{user_input}", feedback_input)
     
     pyperclip.copy(final_exec_prompt)
-    print_success("Prompt di ESECUZIONE (testo) copiato negli appunti!")
-    print("👉 Incollalo nel Chatbot. Poi usa 'rep apply'.")
     save_state()
+    print_success("✅ Prompt di ESECUZIONE (testo) copiato negli appunti!\n")
+
+    print("👉 1. Vai nella chat e premi CTRL+V, quindi invia il prompt.")
+    print(f"{Fore.YELLOW}👉 2. Quando hai ricevuto l'XML di risposta, COPIALO e premi INVIO qui per applicarlo.{Style.RESET_ALL}")
+    input()
+    cmd_apply()
 
 def apply_snippet(file_path, original_block, edit_block):
     if not os.path.exists(file_path): return False
@@ -352,8 +357,11 @@ def apply_snippet_fuzzy(file_path, original_block, edit_block):
         with open(file_path, 'w', encoding='utf-8') as f:
             f.writelines(original_lines)
             
-        print(f"✅ Snippet applicato (Perfetto) a: {file_path}")
+        print(f"✅ Snippet applicato a: {file_path}")
         return True
+    
+    else:
+        print(f"[Warning] Lo snippet originale non coincide: {file_path}")
 
     return False
 

@@ -2,10 +2,10 @@
 **MIO FEEDBACK:**
 {user_input}
 
-### Fase ESECUTIVA
+## Fase ESECUTIVA
 Ora sei entrato nella fase esecutiva, è MOLTO delicata, perché sei chiamato a modificare più file, perché è un sito in produzione, perché NON abbiamo a disposizione più tentativi, dev'essere one-shot e il tuo output verrà automaticamente convertito in modifiche al mio repo (i file verranno sovrascritti!).
 
-**Procedura**
+### Procedura
 * Analizza il mio feedback.
 * Rivedi la tua analisi del prompt precedente.
 * Pianifica le operazioni che dovrai eseguire, cura ogni dettaglio.
@@ -13,49 +13,70 @@ Ora sei entrato nella fase esecutiva, è MOLTO delicata, perché sei chiamato a 
 * VINCOLO DI ESISTENZA DEI PATH: Prima di generare un <file> o uno <snippet>, devi obbligatoriamente verificare che il path esista esattamente come elencato nella sezione 'Directory Structure' o all'interno dei tag <file path="..."> del file repomix-output.xml fornito. Non inventare percorsi basandoti su convenzioni (es. non assumere /components/ui/ se il file è in /components/). Se un file non esiste nel contesto, non tentare di modificarlo.
 * Scrivi un piccolo riepilogo testuale con i file che dovrai modificare/aggiungere/eliminare [EDIT] / [NEW] / [DELETE]; per ognuno di questi, prima di scriverlo, verifica che il path e file esistano realmente, come suggerito al punto precedente.
 * Scrivi il nuovo codice per le pagine modificate o nuove, PER INTERO (salvo uso snippets), nel formato XML specificato sotto, **modifica solo quanto necessario** e **mantieni intatto il resto, compresi i commenti, LA FEDELTÀ ESTREMA È RICHIESTA E CRUCIALE**).
-* Puoi usare il formato "snippets" solo quando le modifiche sono su file con più di 200 righe e in cui le modifiche da fare sono su meno di 1/4 delle righe totali di quel file.
+* Dichiarazione Strategia: Nel tuo riepilogo testuale, per ogni file devi scrivere esplicitamente: "File: [nome], Righe stimate: [N], Strategia: [FULL REWRITE / SNIPPET]". Se scrivi "SNIPPET" per un file piccolo, l'operazione sarà considerata un errore.
 
-**Formato Snippets (per piccole modifiche)**
+### Formato Snippets (per piccole modifiche)
 Quando scegli per alcuni file il formato snippets, per le piccole modifiche, devi includere:
 1. in modo ASSOLUTAMENTE FEDELE (cruciale!) lo snippet di codice originale da sostituire, lo racchiuderai contornato tra 3 backtick dentro il tag <original>, 
 2. lo snippet nuovo che andrà a sostituire l'originale, racchiuso fra 3 backtick, dentro il tag <edit>
 Massima attenzione, perché il tuo output verrà elaborato automaticamente da uno script che cercherà nel file la stringa di testo indicata in <original> e la sostituirà con il testo contenuto in <edit>; ovviamente questa cosa funziona fintante che:
-* Ciò che è contenuto in <original> è assolutamente FEDELE al file originale che ti ho passato in contesto. ⚠️ VINCOLO DI FEDELTÀ ESTREMA: Quando compili il tag <original>, non ricostruire il codice a memoria e non riassumere. Devi eseguire una ricerca testuale nel codebase che ti ho inviato, individuare il blocco esatto di righe e copiarlo carattere per carattere, inclusi spazi, tabulazioni e commenti. Se il contenuto di <original> non è identico al 100% al file sorgente, l'intera operazione fallirà. Se hai dubbi sulla versione esatta, chiedi conferma invece di ipotizzare.
+* Ciò che è contenuto in <original> è assolutamente FEDELE al file originale che ti ho passato in contesto. ⚠️ VINCOLO DI FEDELTÀ ESTREMA: Quando compili il tag <original>, non ricostruire il codice a memoria e non riassumere. Devi eseguire una ricerca testuale nel codebase che ti ho inviato, individuare il blocco esatto di righe e copiarlo carattere per carattere, inclusi i commenti. Se il contenuto di <original> non è identico al 100% al file sorgente, l'intera operazione fallirà. Se hai dubbi sulla versione esatta, chiedi conferma invece di ipotizzare.
 * Ciò che è contenuto in <edit> è pensato per sostituire ciò che è contenuto in <original> garantendo il funzionamento del codice.
-* L'indentazione è tenuta in seria considerazione.
+*   Usa SEMPRE `<![CDATA[ ... ]]>` per il contenuto dei file.
+*   All'interno dei CDATA, racchiudi il codice del file in un blocco Markdown standard con **3 backticks** (es: ```tsx o ```css).
+*   **Indentazione:** Mantieni l'indentazione perfetta dentro i 3 backticks. NON minificare.
 
 **Esempio Snippet 1 (modifica righe):**
 <snippet path="src/utils.ts">
-    <original>
+    <original><![CDATA[
         ```
             const x = 10;
         ```
-    </original>
-    <edit>
+    ]]></original>
+    <edit><![CDATA[
         ```
             const x = 20;
         ```
-    </edit>
+    ]]></edit>
 </snippet>
 
 **Esempio Snippet 2 (aggiunta righe):**
 <snippet path="src/utils.ts">
-    <original>
+    <original><![CDATA[
     ```
         const x = 10;
         const y = 5;
     ```
-    </original>
-    <edit>
+    ]]></original>
+    <edit><![CDATA[
     ```
         const x = 10;
         const z = 15; // Riga aggiunta
         const y = 5;
     ```
-    </edit>
+    ]]></edit>
 </snippet>
 
-**FORMATO DELL'OUTPUT: XML**
+**ATTENZIONE: IL TUO OUTPUT VERRÀ RIGETTATO SE:**
+* Il contenuto di <original> non matcha bit-per-bit il file sul disco (esclusi gli indent che vengono ignorati per il match).
+* Cerchi di "riassumere" il codice in <original> (es. usando ... o commenti tipo // resto del codice).
+* All'interno del blocco <original> cambi l'ordine di proprietà, dichiarazioni, espressioni. (se cambia l'ordine non ottengo più il match indispensabile per eseguire la patch)
+
+**SCELTA DEL FORMATO: FULL REWRITE vs SNIPPET**
+Devi scegliere il formato in base a regole rigide. Non ottimizzare per la lunghezza del tuo output, ottimizza per la sicurezza dell'esecuzione.
+1.  **Formato `<file>` (FULL REWRITE):**
+    *   **OBBLIGATORIO** se il file ha meno di 150 righe.
+    *   **OBBLIGATORIO** se devi modificare più del 30% del file.
+    *   **OBBLIGATORIO** se devi riscrivere intere funzioni o blocchi di codice lunghi (> 25 righe).
+    *   *Istruzione:* Riscrivi l'intero file da cima a fondo (SII ESTREMAMENTE FEDELE AL FILE ORIGINALE bit-per-bit tranne ovviamente per le righe da modificare).
+2.  **Formato `<snippet>` (SEARCH & REPLACE):**
+    *   **PERMESSO SOLO** se il file è grande (> 150 righe) e la modifica è chirurgica (es. cambiare da 1 a 25 righe di codice).
+    *   *Istruzione:*
+        *   Dentro `<original>`: Devi copiare una porzione di codice UNICA ed ESISTENTE. **AVVISO CRITICO:** Mentre le indentazioni sono ignorate, per tutto il resto se sbagli anche solo un carattere rispetto al file sorgente, lo script di replace fallirà. Non indovinare. Copia bit-per-bit. Non usare mai `...` o commenti riassuntivi.
+        *   Dentro `<edit>`: Il nuovo codice che sostituirà ESATTAMENTE il blocco `<original>` (qui invece concentrati molto sulle giuste indentazioni).
+**Se violi queste regole (es. usi snippet su un file piccolo o sbagli l'original), il codice di produzione si romperà.**
+
+### FORMATO DELL'OUTPUT: XML
 1.  **STRUTTURA:** Usa il tag radice `<changes>`.
     *   `<file path="path/to/file">` per file creati o riscritti interamente.
     *   `<snippet path="path/to/file">` per modifiche mirate (Search & Replace).
@@ -97,16 +118,16 @@ export default function ExampleTemplate({ title }: ExampleProps) {
   <delete_file path="src/app/old_file.ts" />
  <!-- Se devi modificare solo dei piccoli snippet: -->
     <snippet path="src/utils.ts">
-        <original>
-            ```tsx
+        <original><![CDATA[
+            ```
                 const x = 10;
             ```
-        </original>
-        <edit>
-            ```tsx
+        ]]></original>
+        <edit><![CDATA[
+            ```
                 const x = 20;
             ```
-        </edit>
+        ]]></edit>
     </snippet>
  <!-- Per i comandi a shell da eseguire: -->
     <shell>
