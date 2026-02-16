@@ -9,12 +9,12 @@ Come riferimento hai:
 
 1. Il contenuto dell'attuale .repomixignore (da tenere e solo integrare)
 ```
-(contenuto del file .repomixignore se presente nella cartella di lavoro, o se non presente del file .repomixignore nella cartella .rep_prompts)
+{current_ignore}
 ```
 
 2. La lista dei file che repomix attualmente mi include nel suo file di output
 ```
-INSERIRE_QUA_ELENCO_FILE_REPOMIX_OUTPUT
+{file_list}
 ```
 
 3. Eccezioni
@@ -23,5 +23,13 @@ docker-compose.yml
 ecosystem.config.js
 proxy.ts
 
+4. Non aggiungere manualmente eccezioni
+Non aggiungere nel file .repomixignore eccezioni forzate, quelle con il punto esclamativo all'inizio, tipo:
+!proxy.ts
+L'importante è che questi file da mantenere non siano elencati nella lista di .repomixignore.
+
 **Output**
-Esegui la tua analisi e dammi il file .repomixignore aggiornato, con tutto ciò che avevo prima (punto 1), aggiornato con tutto il resto che ritieni conveniente escludere. Mettimi il nuovo file repomixignore per intero dentro 3 backtick.
+Esegui la tua analisi e scrivimi:
+* L'elenco dei file aggiunti
+* Il file .repomixignore aggiornato, con tutto ciò che avevo prima (punto 1), aggiornato con tutto il resto che ritieni conveniente escludere. Mettimi il nuovo file repomixignore per intero dentro 3 backtick.
+Eccezione: Se non ritieni necessarie integrazioni all'attuale .repomixignore comunicamelo e non serve alcun elenco o alcun file in output.

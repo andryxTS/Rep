@@ -11,7 +11,7 @@ import re
 import shutil
 import platform
 import re
-import time
+import fnmatch
 from colorama import init, Fore, Style
 
 # Inizializza colorama
@@ -27,6 +27,7 @@ PROMPT_FILENAME = "PROMPT.md"
 # PROMPTS_DIR = os.path.expanduser("~/.rep_prompts")  // SOSTITUITO, COSÌ GIT MI TRACCIA I PROMPT
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROMPTS_DIR = os.path.join(BASE_DIR, "prompts")
+PROMPT_CREA_REPOMIXIGNORE = os.path.join(PROMPTS_DIR, "0_crea_repomixignore.md")
 PROMPT_ANALYSIS_FILE = os.path.join(PROMPTS_DIR, "1_analysis.md")
 PROMPT_EXECUTE_FILE = os.path.join(PROMPTS_DIR, "2_execute.md")
 GLOBAL_IGNORE_FILE = os.path.join(PROMPTS_DIR, ".repomixignore")
@@ -400,16 +401,94 @@ def apply_snippet_fuzzy(file_path, original_block, edit_block):
 
     return False
 
+# --- HELPER PER GESTIONE IGNORE ---
+
+def load_ignore_patterns():
+    """Carica i pattern da GLOBAL_IGNORE_FILE e REPOMIX_IGNORE locale."""
+    patterns = set() # Set per evitare duplicati
+    
+    # 1. Pattern di sistema hardcoded (sempre ignorati)
+    patterns.add(".rep_temp")
+    patterns.add(".git")
+    patterns.add(STATE_FILE) # Ignoriamo il file di stato stesso
+    
+    files_to_read = []
+    
+    # Aggiunge file globale se esiste
+    if os.path.exists(GLOBAL_IGNORE_FILE):
+        files_to_read.append(GLOBAL_IGNORE_FILE)
+        
+    # Aggiunge file locale se esiste
+    if os.path.exists(REPOMIX_IGNORE):
+        files_to_read.append(REPOMIX_IGNORE)
+        
+    for file_path in files_to_read:
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    # Ignora righe vuote e commenti
+                    if line and not line.startswith('#'):
+                        patterns.add(line)
+        except Exception as e:
+            print_warn(f"Impossibile leggere ignore file {file_path}: {e}")
+            
+    return list(patterns)
+
+def is_ignored(path, patterns):
+    """Controlla se un path deve essere ignorato basandosi sui pattern."""
+    # Normalizza path (rimuove ./ iniziale e uniforma separatori)
+    path = os.path.normpath(path)
+    if path.startswith("." + os.sep):
+        path = path[2:]
+    
+    name = os.path.basename(path)
+    
+    for pattern in patterns:
+        # Rimuove slash finali dai pattern (es. "dist/")
+        clean_pattern = pattern.rstrip("/")
+        clean_pattern = clean_pattern.rstrip(os.sep)
+        
+        # 1. Match sul nome esatto o wildcard (es. "node_modules", "*.pyc")
+        if fnmatch.fnmatch(name, clean_pattern):
+            return True
+            
+        # 2. Match sul percorso completo relativo (es. "src/temp/*")
+        if fnmatch.fnmatch(path, clean_pattern):
+            return True
+        
+        # 3. Match se il pattern è una directory genitore del path attuale
+        # Es: pattern="dist", path="dist/css/style.css" -> deve ignorare
+        if path.startswith(clean_pattern + os.sep):
+            return True
+
+    return False
+
+# --- FUNZIONE AGGIORNATA ---
+
 def get_file_hashes():
     hashes = {}
+    patterns = load_ignore_patterns()
+    
     for root, dirs, files in os.walk("."):
-        if any(ignore in root for ignore in ["node_modules", ".git", ".next", "dist", ".rep_temp"]):
+        # OTTIMIZZAZIONE: Modifica 'dirs' in-place per impedire a os.walk 
+        # di scendere nelle cartelle ignorate (es. node_modules).
+        # Questo velocizza enormemente lo script.
+        dirs[:] = [d for d in dirs if not is_ignored(os.path.join(root, d), patterns)]
+        
+        # Controllo se la root corrente è ignorata (doppio check)
+        if is_ignored(root, patterns):
             continue
+
         for file in files:
-            try:
-                path = os.path.join(root, file)
-                with open(path, "rb") as f: hashes[path] = hashlib.md5(f.read()).hexdigest()
-            except: pass
+            file_path = os.path.join(root, file)
+            
+            # Se il file non è ignorato, calcola l'hash
+            if not is_ignored(file_path, patterns):
+                try:
+                    with open(file_path, "rb") as f: 
+                        hashes[file_path] = hashlib.md5(f.read()).hexdigest()
+                except: pass
     return hashes
 
 def save_state():
@@ -502,7 +581,7 @@ def cmd_mod():
     req = get_multiline_input("Richiesta:")
     xml = "<modified_files>\n" + "".join([f' <file path="{p}"><![CDATA[\n{open(p,"r",encoding="utf-8").read()}\n]]></file>\n' for p in modified]) + "</modified_files>"
     
-    pyperclip.copy(f"{req}\n\nATTENZIONE: Ho modificato questi file:\n{xml}")
+    pyperclip.copy(f"{req}\n\n[ATTENZIONE, avviso automatico di sistema: dall'ultimo aggiornamento sono stati modificati alcuni file, che verranno riportati qui sotto e verranno considerati la nuova versione di riferimento:]\n```{xml}```")
     print_success("Copiato negli appunti.")
     save_state()
 
@@ -521,6 +600,7 @@ def cmd_ignore():
     current_ignore_content = ""
     local_ignore = ".repomixignore"
     
+    # MANTENUTA LOGICA ORIGINALE: check esistenza locale o creazione da globale
     if os.path.exists(local_ignore):
         with open(local_ignore, "r", encoding="utf-8") as f:
             current_ignore_content = f.read()
@@ -539,7 +619,6 @@ def cmd_ignore():
             f.write(current_ignore_content.strip())
 
     # 2. Esecuzione Repomix per ottenere la lista file attuale
-    # Ora repomix leggerà il .repomixignore appena creato/esistente
     print_step("Esecuzione Repomix per analisi struttura...")
     temp_repomix_out = os.path.join(TEMP_DIR, "structure_check.xml")
     if not os.path.exists(TEMP_DIR): os.makedirs(TEMP_DIR)
@@ -550,54 +629,36 @@ def cmd_ignore():
     if os.path.exists(temp_repomix_out):
         with open(temp_repomix_out, "r", encoding="utf-8") as f:
             xml_content = f.read()
-            # Estrazione contenuto tra <directory_structure>
             match = re.search(r'<directory_structure>(.*?)</directory_structure>', xml_content, re.DOTALL)
             if match:
                 file_list_str = match.group(1).strip()
     
     if not file_list_str:
         print_error("Impossibile estrarre la struttura dei file da Repomix.")
+        # Pulizia anche in caso di errore
+        if os.path.exists(temp_repomix_out): os.remove(temp_repomix_out)
         return
 
-    # 3. Preparazione Prompt (basato sul tuo file MD)
-    # Nota: Ho inserito il testo del template direttamente qui per comodità, 
-    # ma puoi anche caricarlo da file se preferisci.
-    prompt_template = """**Contesto**
-        Devo mandare l'intero codebase del mio progetto a un chatbot LLM per l'analisi globale e l'effettuazione di alcune modifiche.
+    # 3. Preparazione Prompt (MODIFICATO: Solo File Esterno)
+    if not os.path.exists(PROMPT_CREA_REPOMIXIGNORE):
+        print_error(f"File Prompt non trovato: {PROMPT_CREA_REPOMIXIGNORE}")
+        print_warn("Crea il file nella cartella 'prompts' con i segnaposto {current_ignore} e {file_list}.")
+        return
 
-        **Task**
-        Devi darmi il contenuto del file .repomixignore, in modo che il codebase esportato da repomix sia il più leggero possibile ma completo in ogni suo parte (tutto ciò che può servire all'analisi globale dell'llm, scartando tutto il resto che andrebbe solo ad appesantire: es. assets, package-lock, ecc.).
+    try:
+        with open(PROMPT_CREA_REPOMIXIGNORE, "r", encoding="utf-8") as f:
+            prompt_template = f.read()
 
-        **Riferimenti**
-        Come riferimento hai:
-
-        1. Il contenuto dell'attuale .repomixignore (da tenere e solo integrare)
-        ```
-        {current_ignore}
-        ```
-
-        2. La lista dei file che repomix attualmente mi include nel suo file di output
-        ```
-        {file_list}
-        ```
-
-        3. Eccezioni
-        Sui seguenti file fai un'eccezione, mantienili nell'output di repomix se sono presenti, (ma non serve metterli con il punto esclamativo per assicurarti che vengano mantenuti):
-        docker-compose.yml
-        ecosystem.config.js
-        proxy.ts
-
-        **Output**
-        Esegui la tua analisi e dammi il file .repomixignore aggiornato, con tutto ciò che avevo prima (punto 1), aggiornato con tutto il resto che ritieni conveniente escludere. 
-        Mettimi il nuovo file repomixignore per intero dentro 3 backtick."""
-
-    final_prompt = prompt_template.format(
-        current_ignore=current_ignore_content,
-        file_list=file_list_str
-    )
+        final_prompt = prompt_template.format(
+            current_ignore=current_ignore_content,
+            file_list=file_list_str
+        )
+    except Exception as e:
+        print_error(f"Errore formattazione prompt (controlla le graffe nel file MD): {e}")
+        return
 
     pyperclip.copy(final_prompt)
-    print_success("Prompt per l'ottimizzazione ignore copiato negli appunti!")
+    print_success(f"Prompt caricato da {os.path.basename(PROMPT_CREA_REPOMIXIGNORE)} e copiato negli appunti!")
     
     # 4. Acquisizione con normalizzazione forzata
     print(f"\n{Fore.YELLOW}👉 1. INCOLLA gli appunti sul chatbot per generare il Prompt.{Style.RESET_ALL}")    
@@ -609,7 +670,7 @@ def cmd_ignore():
     # Pulizia dai backtick
     content = clean_code_content(raw_clipboard)
     
-    # --- FIX RIDEFINITO PER RIGHE VUOTE ---
+    # --- MANTENUTA LOGICA ORIGINALE DI PULIZIA ---
     # 1. Normalizziamo i fine riga (rimuove \r e tiene solo \n)
     content = content.replace('\r\n', '\n').replace('\r', '\n')
     
@@ -620,7 +681,6 @@ def cmd_ignore():
     final_lines = []
     for i, line in enumerate(lines):
         # Aggiungiamo la riga se non è vuota, OPPURE se è vuota ma quella precedente non lo era
-        # (questo preserva al massimo una riga vuota di separazione tra blocchi)
         if line != "" or (i > 0 and final_lines[-1] != ""):
             final_lines.append(line)
     
@@ -628,14 +688,14 @@ def cmd_ignore():
 
     # 5. Salvataggio con controllo newline
     if not final_content:
-        print_warn("Contenuto non rilevato negli appunti. Uso il default.")
+        print_warn("Contenuto non rilevato negli appunti. Uso il default esistente.")
         final_content = current_ignore_content.strip()
 
     with open(local_ignore, "w", encoding="utf-8", newline='\n') as f:
         f.write(final_content)
     print_success(f"File {local_ignore} salvato (pulizia righe doppie eseguita).")
 
-    # Aggiornamento globale (confronto basato su righe significative)
+    # Aggiornamento globale (confronto basato su righe significative) - MANTENUTO
     if len(final_content.splitlines()) > len(current_ignore_content.splitlines()):
         with open(GLOBAL_IGNORE_FILE, "w", encoding="utf-8", newline='\n') as f:
             f.write(final_content)
