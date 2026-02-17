@@ -11,6 +11,17 @@ Servono solo 2 requisiti: Python e Node.js (per repomix).
     npm install -g repomix
     ```
 
+**ATTENZIONE!!!**
+Se si usa il termine in VS Code serve togliere il bindings di ctrl+invio e rimandarlo al terminale sennò viene intercettato:
+- Premere CTRL+SHIFT+P cercare Open Keyboard Shortcuts (JSON) 
+- Aggiungere un binding mettendo la virgola all'ultima quadre e incollando sotto:
+    {
+    "key": "ctrl+enter",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": { "text": "\u001b[13;5u" },
+    "when": "terminalFocus"
+    }
+
 ### 2. Come Funziona il Nuovo Workflow
 
 Ecco esattamente cosa accadrà quando lo userai:

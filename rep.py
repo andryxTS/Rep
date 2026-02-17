@@ -15,6 +15,14 @@ import fnmatch
 import shutil
 from colorama import init, Fore, Style
 
+# --- GESTIONE DIPENDENZE OPZIONALI ---
+try:
+    from prompt_toolkit import PromptSession
+    from prompt_toolkit.key_binding import KeyBindings
+    HAS_PROMPT_TOOLKIT = True
+except ImportError:
+    HAS_PROMPT_TOOLKIT = False
+
 # Inizializza colorama
 init(autoreset=True)
 
@@ -321,14 +329,40 @@ def ensure_prompts_exist():
         with open(PROMPT_FORMATO_OUTPUT, "w", encoding="utf-8") as f: f.write(DEFAULT_FORMATO_OUTPUT)
 
 def get_multiline_input(prompt_text):
-    print(f"\n{Fore.YELLOW}{prompt_text} (Premi INVIO due volte per terminare):{Style.RESET_ALL}")
-    lines = []
-    while True:
-        line = input()
-        if not line: break
-        lines.append(line)
-    return "\n".join(lines)
+    print(f"\n{Fore.YELLOW}{prompt_text}{Style.RESET_ALL}")
 
+    if HAS_PROMPT_TOOLKIT:
+        # --- CONFIGURAZIONE AVANZATA ---
+        kb = KeyBindings()
+
+        # 1. Tasto INVIO -> Inserisce una nuova riga (non invia)
+        @kb.add('enter')
+        def _(event):
+            event.current_buffer.insert_text('\n')
+
+        # 2. CTRL+INVIO -> invia
+        # 'escape','[','1','3',';','5','u' = sequenza VSCode integrato + Windows Terminal (Win11)
+        # 'c-j' = fallback per VSCode vecchi / terminale classico Windows
+        @kb.add('escape', '[', '1', '3', ';', '5', 'u')
+        @kb.add('c-j')
+        def _(event):
+            event.current_buffer.validate_and_handle()
+
+        print(f"{Style.DIM}(Scrivi il messaggio. Premi {Fore.CYAN}CTRL+INVIO{Style.RESET_ALL}{Style.DIM} per inviare){Style.RESET_ALL}")        
+        session = PromptSession(key_bindings=kb, multiline=True)
+        return session.prompt("> ")
+
+    else:
+        # Fallback se manca la libreria
+        print(f"{Fore.RED}⚠ Per input avanzato installa: pip install prompt_toolkit{Style.RESET_ALL}")
+        print(f"{Style.DIM}(Scrivi 'END' su una riga vuota e premi Invio per terminare){Style.RESET_ALL}")
+        lines = []
+        while True:
+            line = input()
+            if line.strip() == "END": break
+            lines.append(line)
+        return "\n".join(lines)
+            
 def clean_code_content(content):
     if not content: return ""
     content = content.strip() # Questo pulisce FUORI dai backtick (sicuro)
@@ -431,8 +465,9 @@ def cmd_init(auto_input=None):
         print("👉 Ho aperto la cartella. Seleziona i 2 file e trascinali nella chat.")
 
     # 5. Attesa Feedback
-    print(f"\n{Fore.YELLOW}👉 2. Quando hai ricevuto l'analisi dal chatbot, inserisci il tuo feedback di seguito:\n(lascia vuoto per lasciar decidere all'LLM tutto in autonomia){Style.RESET_ALL}")
-    feedback_input = input().strip()
+    msg = "👉 2. Inserisci il feedback dal chatbot (lascia vuoto per default):"
+    feedback_input = get_multiline_input(msg).strip()
+    
     if not feedback_input:
         feedback_input = "Fai tu in autonomia le scelte che ritieni più opportune, mi fido."
 
