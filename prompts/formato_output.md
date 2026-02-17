@@ -114,9 +114,7 @@ export default function ExampleTemplate({ title }: ExampleProps) {
     </snippet>
  <!-- Per i comandi a shell da eseguire: -->
     <shell>
-        ```bat
-            pnpm add -D new-library
-        ```
+        pnpm add -D new-library
     </shell>
 </changes>
 ````

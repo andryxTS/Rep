@@ -257,6 +257,18 @@ export default function ExampleTemplate({ title }: ExampleProps) {
 
 # --- UTILS SISTEMA ---
 
+def cleanup_and_exit():
+    """Pulisce i file temporanei ed esce dallo script."""
+    # Mettiamo il messaggio QUI. È l'unico punto sicuro che viene eseguito sempre.
+    print(f"\n{Fore.RED}⛔ Operazione annullata.{Style.RESET_ALL}")
+    
+    if os.path.exists(TEMP_DIR):
+        try:
+            shutil.rmtree(TEMP_DIR, ignore_errors=True)
+        except Exception:
+            pass
+    sys.exit(0)
+
 def print_step(msg): print(f"\n{Fore.CYAN}➤ {msg}{Style.RESET_ALL}")
 def print_success(msg): print(f"{Fore.GREEN}✔ {msg}{Style.RESET_ALL}")
 def print_error(msg): print(f"{Fore.RED}✘ {msg}{Style.RESET_ALL}")
@@ -328,41 +340,102 @@ def ensure_prompts_exist():
     if not os.path.exists(PROMPT_FORMATO_OUTPUT):
         with open(PROMPT_FORMATO_OUTPUT, "w", encoding="utf-8") as f: f.write(DEFAULT_FORMATO_OUTPUT)
 
-def get_multiline_input(prompt_text):
+def get_multiline_input(prompt_text, default_text=""):
     print(f"\n{Fore.YELLOW}{prompt_text}{Style.RESET_ALL}")
 
     if HAS_PROMPT_TOOLKIT:
-        # --- CONFIGURAZIONE AVANZATA ---
         kb = KeyBindings()
 
-        # 1. Tasto INVIO -> Inserisce una nuova riga (non invia)
         @kb.add('enter')
         def _(event):
             event.current_buffer.insert_text('\n')
 
-        # 2. CTRL+INVIO -> invia
-        # 'escape','[','1','3',';','5','u' = sequenza VSCode integrato + Windows Terminal (Win11)
-        # 'c-j' = fallback per VSCode vecchi / terminale classico Windows
+        @kb.add('c-v')
+        def _(event):
+            event.current_buffer.insert_text(pyperclip.paste())
+        
+        @kb.add('escape')
+        def _(event):
+            # Solleva l'eccezione che verrà catturata sotto
+            event.app.exit(exception=KeyboardInterrupt)
+
         @kb.add('escape', '[', '1', '3', ';', '5', 'u')
         @kb.add('c-j')
         def _(event):
             event.current_buffer.validate_and_handle()
 
-        print(f"{Style.DIM}(Scrivi il messaggio. Premi {Fore.CYAN}CTRL+INVIO{Style.RESET_ALL}{Style.DIM} per inviare){Style.RESET_ALL}")        
+        print(f"{Style.DIM}(Scrivi il messaggio. Premi {Fore.CYAN}CTRL+INVIO{Style.RESET_ALL}{Style.DIM} per inviare, {Fore.RED}ESC{Style.RESET_ALL}{Style.DIM} per annullare){Style.RESET_ALL}")        
+        
         session = PromptSession(key_bindings=kb, multiline=True)
-        return session.prompt("> ")
-
+        try:
+            return session.prompt("> ", default=default_text)
+        except KeyboardInterrupt:
+            cleanup_and_exit()
+            return "" 
     else:
-        # Fallback se manca la libreria
-        print(f"{Fore.RED}⚠ Per input avanzato installa: pip install prompt_toolkit{Style.RESET_ALL}")
-        print(f"{Style.DIM}(Scrivi 'END' su una riga vuota e premi Invio per terminare){Style.RESET_ALL}")
+        # Fallback standard
+        if default_text:
+            print(f"{Style.DIM}Testo originale:\n{default_text}{Style.RESET_ALL}")
+        print(f"{Style.DIM}(Scrivi 'END' su una riga vuota e premi Invio per terminare. CTRL+C per annullare){Style.RESET_ALL}")
         lines = []
-        while True:
-            line = input()
-            if line.strip() == "END": break
-            lines.append(line)
+        try:
+            while True:
+                line = input()
+                if line.strip() == "END": break
+                lines.append(line)
+        except KeyboardInterrupt:
+            cleanup_and_exit()
         return "\n".join(lines)
+                
+def smart_input(prompt_text):
+    """Sostituto di input() che supporta ESC tramite prompt_toolkit"""
+    if HAS_PROMPT_TOOLKIT:
+        kb = KeyBindings()
+
+        @kb.add('escape')
+        def _(event):
+            event.app.exit(exception=KeyboardInterrupt)
+
+        session = PromptSession(key_bindings=kb)
+        try:
+            return session.prompt(prompt_text, multiline=False)
+        except KeyboardInterrupt:
+            cleanup_and_exit()
+            return ""
+    else:
+        try:
+            return input(prompt_text)
+        except KeyboardInterrupt:
+            cleanup_and_exit()
+
+def wait_for_enter(prompt_text=""):
+    """Sostituto di input() per pause, supporta ESC"""
+    if prompt_text:
+        print(f"\n{Fore.YELLOW}{prompt_text}{Style.RESET_ALL}")
+        
+    if HAS_PROMPT_TOOLKIT:
+        kb = KeyBindings()
+        
+        # Manteniamo eager=True per tentare di essere più veloci possibile
+        @kb.add('escape', eager=True)
+        def _(event):
+            event.app.exit(exception=KeyboardInterrupt)
             
+        @kb.add('enter')
+        def _(event):
+            event.app.exit(result=None)
+
+        session = PromptSession(key_bindings=kb)
+        try:
+            session.prompt("", multiline=False)
+        except KeyboardInterrupt:
+            cleanup_and_exit()
+    else:
+        try:
+            input()
+        except KeyboardInterrupt:
+            cleanup_and_exit()
+
 def clean_code_content(content):
     if not content: return ""
     content = content.strip() # Questo pulisce FUORI dai backtick (sicuro)
@@ -405,7 +478,7 @@ def cmd_init(auto_input=None):
     if trigger_ignore:
         # Se c'è auto_input (modalità automatica), saltiamo il blocco interattivo dell'ignore per non interrompere il flusso
         if not auto_input:
-            input("PREMERE un tasto qualsiasi per procedere con l'ottimizzazione di Repomix tramite chatbot...")
+            wait_for_enter("PREMERE un tasto qualsiasi per procedere con l'ottimizzazione di Repomix tramite chatbot...")
             cmd_ignore()
             print("\n" + "="*40 + "\n")
             print_step("Riprendo l'inizializzazione del progetto...")
@@ -495,7 +568,7 @@ def cmd_init(auto_input=None):
 
     print("👉 1. Vai nella chat e premi CTRL+V, quindi invia il prompt.")
     print(f"{Fore.YELLOW}👉 2. Quando hai ricevuto l'XML di risposta, COPIALO e premi INVIO qui per applicarlo.{Style.RESET_ALL}")
-    input()
+    wait_for_enter()
     cmd_apply()
 
 def apply_snippet(file_path, original_block, edit_block):
@@ -540,7 +613,6 @@ def apply_snippet_fuzzy(file_path, original_block, edit_block):
         original_lines = f.readlines()
 
     # 2. Creiamo la mappa "Searchable" del file
-    # Ogni elemento è una tupla: (indice_reale_nel_file, contenuto_normalizzato)
     file_map = []
     for idx, line in enumerate(original_lines):
         norm = normalize_line(line)
@@ -548,7 +620,6 @@ def apply_snippet_fuzzy(file_path, original_block, edit_block):
             file_map.append((idx, norm))
 
     # 3. Creiamo la sequenza "Target" dallo snippet originale
-    # Qui ci serve solo il contenuto normalizzato
     target_sequence = []
     for line in original_block.splitlines():
         norm = normalize_line(line)
@@ -564,18 +635,12 @@ def apply_snippet_fuzzy(file_path, original_block, edit_block):
     start_real_index = -1
     end_real_index = -1
     
-    # Cerchiamo la sequenza target dentro la mappa del file
     n_file = len(file_map)
     n_target = len(target_sequence)
 
     for i in range(n_file - n_target + 1):
-        # Estraiamo una "finestra" di righe normalizzate dal file
         window = [item[1] for item in file_map[i : i + n_target]]
-        
-        # Confrontiamo con lo snippet cercato
         if window == target_sequence:
-            # TROVATO!
-            # Recuperiamo gli indici reali dal primo e dall'ultimo elemento del match
             start_real_index = file_map[i][0]
             end_real_index = file_map[i + n_target - 1][0]
             match_found = True
@@ -587,8 +652,7 @@ def apply_snippet_fuzzy(file_path, original_block, edit_block):
         indent_match = re.match(r"^\s*", first_orig_line)
         original_indent = indent_match.group(0) if indent_match else ""
 
-        # 2. Pulizia: togliamo invii/spazi SOLO in coda e invii in testa
-        # Ma NON facciamo lo strip degli spazi in testa per non distruggere tutto
+        # 2. Pulizia edit block
         clean_edit = edit_block.lstrip('\r\n').rstrip()
         edit_lines = clean_edit.splitlines()
 
@@ -596,21 +660,29 @@ def apply_snippet_fuzzy(file_path, original_block, edit_block):
             # 3. Applichiamo l'indentazione originale alla prima riga
             edit_lines[0] = original_indent + edit_lines[0].lstrip()
             
-            # 4. Ricostruiamo il segmento. 
-            # Aggiungiamo \n a tutte le righe tranne l'ultima del blocco.
+            # 4. Ricostruiamo il segmento (tutti tranne l'ultimo hanno \n sicuro)
             new_segment = [line + '\n' for line in edit_lines[:-1]]
             
             # 5. Gestione dell'ultima riga del blocco
             last_line_content = edit_lines[-1]
-            # Se la riga originale che stiamo sostituendo aveva un \n, lo rimettiamo
-            if original_lines[end_real_index].endswith('\n'):
+            
+            # Verifichiamo se il blocco sostituito tocca la fine fisica del file
+            is_eof = (end_real_index == len(original_lines) - 1)
+
+            # Logica "Best Practice": Se c'era prima o se siamo alla fine, aggiungi \n
+            if original_lines[end_real_index].endswith('\n') or is_eof:
                 new_segment.append(last_line_content + '\n')
             else:
                 new_segment.append(last_line_content)
 
-        # 6. Sostituzione effettiva
-        original_lines[start_real_index : end_real_index + 1] = new_segment
+            # 6. Sostituzione effettiva (ORA INDENTATA CORRETTAMENTE)
+            original_lines[start_real_index : end_real_index + 1] = new_segment
 
+        else:
+            # Gestione cancellazione: se edit_lines è vuoto, rimuoviamo le righe originali
+            del original_lines[start_real_index : end_real_index + 1]
+
+        # Scrittura su disco (Dentro if match_found, ma fuori dalla logica di edit)
         with open(file_path, 'w', encoding='utf-8') as f:
             f.writelines(original_lines)
             
@@ -731,6 +803,8 @@ def cmd_apply():
     for file_node in root.findall('file'):
         path = file_node.get('path')
         content = clean_code_content(file_node.text or "")
+        if content and not content.endswith('\n'):
+            content += '\n'
         dirname = os.path.dirname(path)
         if dirname:
             os.makedirs(dirname, exist_ok=True)
@@ -760,17 +834,60 @@ def cmd_apply():
             print_warn(f"[DEL] Eliminato: {path}")
             changes_count += 1
             
+    shell_commands = [] # Reset lista comandi
     shell_node = root.find('shell')
-    if shell_node is not None: shell_commands.append(shell_node.text.strip())
+    if shell_node is not None:
+        raw_cmd = clean_code_content(shell_node.text)
+        if raw_cmd:
+            # Divide in righe ignorando quelle vuote
+            shell_commands = [l.strip() for l in raw_cmd.splitlines() if l.strip()]
 
     save_state()
     
-    
+    # --- NUOVO MENU INTERATTIVO SHELL (Lineare) ---
     if shell_commands:
         print(f"\n{Fore.YELLOW}Comandi shell suggeriti:{Style.RESET_ALL}")
-        for cmd in shell_commands: print(f"> {cmd}")
-        if input("\nEseguire? (y/n): ").lower() == 'y':
-            for cmd in shell_commands: run_command(cmd, capture=False)
+        for i, cmd in enumerate(shell_commands, 1):
+            print(f"{Fore.CYAN}{i}.{Style.RESET_ALL} {cmd}")
+        
+        print(f"\n{Fore.YELLOW}Scegli un'azione:{Style.RESET_ALL}")
+        print(f"1) {Fore.GREEN}Esegui{Style.RESET_ALL} (Default)")
+        print(f"2) {Fore.BLUE}Modifica ed Esegui{Style.RESET_ALL}")
+        print(f"3) {Fore.RED}Ignora{Style.RESET_ALL}")
+        
+        choice = smart_input(f"\nScelta [1]: ").strip()
+        
+        # --- GESTIONE MODIFICA ---
+        if choice == "2":
+            current_block = "\n".join(shell_commands)
+            print(f"{Fore.YELLOW}Modifica i comandi (CTRL+INVIO per confermare ed eseguire):{Style.RESET_ALL}")
+            
+            # Qui si apre l'editor con il testo precompilato
+            new_input = get_multiline_input("", default_text=current_block)
+            
+            # Aggiorniamo la lista comandi
+            if new_input.strip():
+                shell_commands = [l.strip() for l in new_input.splitlines() if l.strip()]
+            else:
+                print_warn("Lista comandi svuotata.")
+                shell_commands = []
+            
+            # Forziamo la scelta a "1" per far scattare l'esecuzione subito dopo
+            choice = "1"
+
+        # --- GESTIONE ESECUZIONE ---
+        if choice == "" or choice == "1":
+            if shell_commands:
+                print_step("Esecuzione comandi...")
+                for cmd in shell_commands:
+                    print(f"> {cmd}")
+                    # check=False permette di continuare anche se un comando da warning
+                    subprocess.run(cmd, shell=True, check=False)
+            else:
+                print_warn("Nessun comando da eseguire.")
+                
+        elif choice == "3":
+            print_warn("Comandi ignorati.")
 
     # NUOVO: Gestione fallimenti e generazione prompt di ripristino
     if failed_snippets:
@@ -783,7 +900,7 @@ def cmd_apply():
         print_success("✅ Prompt di ripristino copiato negli appunti!\n")
         print("👉 1. Incolla il prompt nella chat per far correggere all'LLM i file rimanenti.")
         print("👉 2. Poi COPIA la sua risposta qui e premi INVIO.")
-        input()
+        wait_for_enter()
         cmd_apply()
     else:
         print_success("Tutte le modifiche sono state applicate con successo.")
@@ -837,7 +954,7 @@ def cmd_check():
         print(f"{Fore.CYAN}2) npm install{Style.RESET_ALL}")
         print(f"{Fore.CYAN}3) Salta (Usa tsc globale se presente){Style.RESET_ALL}")
         
-        choice = input(f"\nScelta [1]: ").strip()
+        choice = smart_input(f"\nScelta [1]: ").strip()
         
         install_cmd = None
         if choice == "" or choice == "1":
@@ -944,7 +1061,7 @@ def cmd_check():
         print(f"{Fore.CYAN}2) Genera solo il prompt (include eventuali modifiche recenti ai file){Style.RESET_ALL}")
         print(f"{Fore.CYAN}3) Non fare nulla{Style.RESET_ALL}")
         
-        choice = input(f"\nScelta [1]: ").strip()
+        choice = smart_input(f"\nScelta [1]: ").strip()
         
         if choice in ["", "1"]:
             # Opzione 1: Init Completo
@@ -1048,7 +1165,7 @@ def cmd_ignore():
     # 4. Acquisizione con normalizzazione forzata
     print(f"\n{Fore.YELLOW}👉 1. INCOLLA gli appunti sul chatbot per generare il Prompt.{Style.RESET_ALL}")    
     print(f"{Fore.YELLOW}👉 2. COPIA la risposta del chatbot negli appunti e premi INVIO.{Style.RESET_ALL}")
-    input()
+    wait_for_enter()
 
     raw_clipboard = pyperclip.paste()
     
@@ -1102,7 +1219,7 @@ def cmd_ignore():
     if len(new_lines) > len(global_lines):
         print(f"{Fore.YELLOW}⚠ Il nuovo .repomixignore contiene più regole ({len(new_lines)}) del globale ({len(global_lines)}).{Style.RESET_ALL}")
         
-        choice = input(f"Vuoi AGGIORNARE il file globale di riferimento sovrascrivendolo? (y/N): ").strip().lower()
+        choice = smart_input(f"Vuoi AGGIORNARE il file globale di riferimento sovrascrivendolo? (y/N): ").strip().lower()
         
         if choice == 'y':
             with open(GLOBAL_IGNORE_FILE, "w", encoding="utf-8", newline='\n') as f:
@@ -1141,7 +1258,7 @@ def cmd_new():
     print_success("Prompt di richiesta riassunto copiato negli appunti!")
     print(f"{Fore.YELLOW}👉 1. Incolla questo prompt nella VECCHIA chat.{Style.RESET_ALL}")
     print(f"{Fore.YELLOW}👉 2. Copia la risposta (il blocco di codice) che ti darà l'LLM.{Style.RESET_ALL}")
-    input("👉 3. Premi INVIO qui quando hai copiato il riassunto negli appunti...")
+    wait_for_enter("👉 3. Premi INVIO qui quando hai copiato il riassunto negli appunti...")
 
     # --- FASE 2: Acquisizione Riassunto ---
     raw_summary = pyperclip.paste()
@@ -1215,7 +1332,7 @@ def cmd_new():
         print("👉 Ho aperto la cartella. Trascina i 2 file nella NUOVA chat.")
         
 def main():
-    if len(sys.argv) < 2: return print(f"Uso: rep [init|apply|mod|check|ignore]")
+    if len(sys.argv) < 2: return print(f"Uso: rep [init|apply|mod|check|ignore|new]")
     action = sys.argv[1]
     if action == "init": cmd_init()
     elif action == "apply": cmd_apply()
@@ -1225,4 +1342,8 @@ def main():
     elif action == "new": cmd_new()
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        # Cattura CTRL+C globale (utile nei menu input standard)
+        cleanup_and_exit()

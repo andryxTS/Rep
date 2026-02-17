@@ -21,6 +21,7 @@ Ti chiederò di effettuare alcune modifiche al mio codebase. Per adesso farai un
 * Practice del mio repo: Eccezione alla regola precedente: adattati all'approccio che vedi utilizzato nel mio repo (se ad esempio il mio repo utilizza qualcosa che non è esattamente tra le best-practice, adattati comunque all'approccio del mio repo, previa approvazione mia, ricordati di richiedermi il feedback).
 * Dati dinamici: Se trovi collegamenti a CMS (es. Sanity), mantieni l'approccio, evita contenuti hardcoded (eccetto fallback).
 * initialValue: se aggiungi campi a Sanity, includi sempre un initialValue.
+* Installazione pacchetti Node.js: di default usa `pnpm`, NON usare `npm`. Usa npm solo se dall'analisi del mio codice ti accorgi che inequivocabilmente usato npm per quell'app.
 
 **MODIFICHE RICHIESTE:**
 {user_input}
