@@ -2,34 +2,53 @@
 Devo mandare l'intero codebase del mio progetto a un chatbot LLM per l'analisi globale e l'effettuazione di alcune modifiche.
 
 **Task**
-Devi darmi il contenuto del file .repomixignore, in modo che il codebase esportato da repomix sia il più leggero possibile ma completo in ogni suo parte (tutto ciò che può servire all'analisi globale dell'llm, scartando tutto il resto che andrebbe solo ad appesantire: es. assets, package-lock, ecc.).
+Devi darmi il contenuto del file `.repomixignore`, in modo che il codebase esportato da repomix sia il più leggero possibile ma completo in ogni sua parte (tutto ciò che può servire all'analisi globale dell'llm, scartando tutto il resto che andrebbe solo ad appesantire: es. assets, package-lock, ecc.).
 
-**Riferimenti**
-Come riferimento hai:
+**Input**
+Ecco i dati su cui lavorare:
 
-1. Il contenuto dell'attuale .repomixignore (da tenere e solo integrare)
+1. **Global Ignore (Riferimento)**
+Questo è il file di esclusione "standard" che uso per tutti i progetti. Usalo come base intoccabile.
 ```
-{current_ignore}
+{global_ignore}
 ```
 
-2. La lista dei file che repomix attualmente mi include nel suo file di output
+2. **Local Ignore (Progetto Attuale)**
+Questo è il file `.repomixignore` attualmente presente nella cartella del progetto.
+```
+{local_ignore}
+```
+
+3. **Lista File Attuale**
+Questa è la lista dei file che repomix sta attualmente includendo tramite local ignore (e che forse dovremmo filtrare meglio).
 ```
 {file_list}
 ```
 
-3. Eccezioni
-Sui seguenti file fai un'eccezione, mantienili nell'output di repomix se sono presenti, perché capita che a volte ho proprio problemi nel deploy, e poi preferisco dare queste informazioni in più all'LLM, d'altronde sono anche file di poche decine di righe:
+**Eccezioni**
+Sui seguenti file fai un'eccezione, mantienili nell'output di repomix se sono presenti:
 docker-compose.yml
 ecosystem.config.js
 proxy.ts
+package.json
+tsconfig.json
+jsconfig.json
+tailwind.config.js
+tailwind.config.ts
+drizzle.config.ts
+prisma.config.ts
+next.config.js
+next.config.ts
+middleware.ts
+.env.example
 
-4. Non aggiungere manualmente eccezioni
-Non aggiungere nel file .repomixignore eccezioni forzate, quelle con il punto esclamativo all'inizio, tipo:
-!proxy.ts
-L'importante è che questi file da mantenere non siano elencati nella lista di .repomixignore.
+**Regole**
+1. **Merge Additivo**: Parti dal **Global Ignore**. Aggiungi le regole del **Local Ignore**. Infine, aggiungi nuove regole basandoti sulla **Lista File** per escludere file inutili non ancora coperti.
+2. **Nessuna sovrascrittura**: Non rimuovere regole presenti nel Global Ignore.
+3. **Nessuna eccezione manuale**: Non usare la sintassi `!file`. Se un file deve essere incluso (come le eccezioni sopra), semplicemente assicurati che non ci sia una regola che lo escluda.
 
 **Output**
 Esegui la tua analisi e scrivimi:
-* L'elenco dei file aggiunti
-* Il file .repomixignore aggiornato, con tutto ciò che avevo prima (punto 1), aggiornato con tutto il resto che ritieni conveniente escludere. Mettimi il nuovo file repomixignore per intero dentro 3 backtick.
-Eccezione: Se non ritieni necessarie integrazioni all'attuale .repomixignore comunicamelo e non serve alcun elenco o alcun file in output.
+* L'elenco dei file che hai deciso di aggiungere alle regole di esclusione.
+* Il file `.repomixignore` FINALE COMPLETO (Globale + Locale + Nuove aggiunte).
+* Mettimi il file per intero dentro 3 backtick.

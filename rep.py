@@ -1013,26 +1013,37 @@ def cmd_ignore():
         if os.path.exists(temp_repomix_out): os.remove(temp_repomix_out)
         return
 
-    # 3. Preparazione Prompt (MODIFICATO: Solo File Esterno)
+    # 3. Preparazione Prompt (MODIFICATO per gestire Global e Local separatamente)
     if not os.path.exists(PROMPT_CREA_REPOMIXIGNORE):
         print_error(f"File Prompt non trovato: {PROMPT_CREA_REPOMIXIGNORE}")
-        print_warn("Crea il file nella cartella 'prompts' con i segnaposto {current_ignore} e {file_list}.")
+        print_warn("Crea il file nella cartella 'prompts'.")
         return
+
+    # Lettura esplicita del Global Ignore
+    global_ignore_content = ""
+    if os.path.exists(GLOBAL_IGNORE_FILE):
+        with open(GLOBAL_IGNORE_FILE, "r", encoding="utf-8") as f:
+            global_ignore_content = f.read()
+
+    # Lettura esplicita del Local Ignore (già letto sopra in current_ignore_content, ma per chiarezza)
+    local_ignore_content = current_ignore_content
 
     try:
         with open(PROMPT_CREA_REPOMIXIGNORE, "r", encoding="utf-8") as f:
             prompt_template = f.read()
 
+        # Usiamo le chiavi aggiornate del nuovo file Markdown
         final_prompt = prompt_template.format(
-            current_ignore=current_ignore_content,
+            global_ignore=global_ignore_content,
+            local_ignore=local_ignore_content,
             file_list=file_list_str
         )
     except Exception as e:
-        print_error(f"Errore formattazione prompt (controlla le graffe nel file MD): {e}")
+        print_error(f"Errore formattazione prompt (verifica che il file MD abbia i placeholder {{global_ignore}}, {{local_ignore}}, {{file_list}}): {e}")
         return
 
     pyperclip.copy(final_prompt)
-    print_success(f"Prompt caricato da {os.path.basename(PROMPT_CREA_REPOMIXIGNORE)} e copiato negli appunti!")
+    print_success(f"Prompt caricato e copiato negli appunti!")
     
     # 4. Acquisizione con normalizzazione forzata
     print(f"\n{Fore.YELLOW}👉 1. INCOLLA gli appunti sul chatbot per generare il Prompt.{Style.RESET_ALL}")    
@@ -1069,12 +1080,45 @@ def cmd_ignore():
         f.write(final_content)
     print_success(f"File {local_ignore} salvato (pulizia righe doppie eseguita).")
 
-    # Aggiornamento globale (confronto basato su righe significative) - MANTENUTO
-    if len(final_content.splitlines()) > len(current_ignore_content.splitlines()):
-        with open(GLOBAL_IGNORE_FILE, "w", encoding="utf-8", newline='\n') as f:
-            f.write(final_content)
-        print_success("Default globale aggiornato.")
+    # --- BLOCCO AGGIORNAMENTO GLOBALE (OTTIMIZZATO) ---
+    # 1. Rileggiamo il file globale dal disco per sicurezza assoluta
+    disk_global_content = ""
+    if os.path.exists(GLOBAL_IGNORE_FILE):
+        with open(GLOBAL_IGNORE_FILE, "r", encoding="utf-8") as f:
+            disk_global_content = f.read()
 
+    # 2. Helper per pulire e contare le righe
+    # Rimuove spazi vuoti e considera significative solo le righe con testo
+    def get_clean_lines(text):
+        return [line.strip() for line in text.splitlines() if line.strip()]
+
+    global_lines = get_clean_lines(disk_global_content)
+    new_lines = get_clean_lines(final_content)
+
+    # 3. Print di Debug per capire perché non scattava
+    print(f"\n{Style.DIM}[Info Confronto] Righe significative -> Globale: {len(global_lines)} vs Nuovo: {len(new_lines)}{Style.RESET_ALL}")
+
+    # 4. Logica di confronto
+    if len(new_lines) > len(global_lines):
+        print(f"{Fore.YELLOW}⚠ Il nuovo .repomixignore contiene più regole ({len(new_lines)}) del globale ({len(global_lines)}).{Style.RESET_ALL}")
+        
+        choice = input(f"Vuoi AGGIORNARE il file globale di riferimento sovrascrivendolo? (y/N): ").strip().lower()
+        
+        if choice == 'y':
+            with open(GLOBAL_IGNORE_FILE, "w", encoding="utf-8", newline='\n') as f:
+                f.write(final_content)
+            print_success(f"Default globale aggiornato su: {GLOBAL_IGNORE_FILE}")
+        else:
+            print_step("File globale mantenuto invariato.")
+    
+    elif len(new_lines) < len(global_lines):
+        print_warn("Nota: Il nuovo file generato è più piccolo del globale. Non propongo aggiornamenti.")
+    
+    else:
+        # Stesso numero di righe
+        pass
+
+    # Pulizia temp
     if os.path.exists(temp_repomix_out):
         os.remove(temp_repomix_out)
 

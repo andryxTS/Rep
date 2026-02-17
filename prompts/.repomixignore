@@ -27,7 +27,7 @@ repomix-output.xml
 *.swp
 .DS_Store
 Thumbs.db
-.env*
+.env
 .git/
 .github/
 .vscode/
@@ -65,15 +65,9 @@ src/app/_pagine-test/
 # --- Standard Config & Boilerplate ---
 # Rimuoviamo i file di config che l'LLM non deve modificare per compiti di logica/feature
 components.json
-tsconfig.json
-jsconfig.json
 next-env.d.ts
 postcss.config.*
 eslint.config.*
-tailwind.config.*
-next.config.ts
-next.config.js
-open-next.config.ts
 .prettierrc*
 
 # --- Cloudflare & Deployment Tools ---
@@ -107,7 +101,6 @@ static/
 **/*.mov
 **/*.md
 **/*.csv
-**/*.json
 **/*.xml
 **/*.woff
 **/*.woff2
