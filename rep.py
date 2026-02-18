@@ -478,10 +478,13 @@ def cmd_init(auto_input=None):
     if trigger_ignore:
         # Se c'è auto_input (modalità automatica), saltiamo il blocco interattivo dell'ignore per non interrompere il flusso
         if not auto_input:
-            wait_for_enter("PREMERE un tasto qualsiasi per procedere con l'ottimizzazione di Repomix tramite chatbot...")
-            cmd_ignore()
-            print("\n" + "="*40 + "\n")
-            print_step("Riprendo l'inizializzazione del progetto...")
+            choice = smart_input(f"\nVuoi ottimizzare il .repomixignore con l'AI? (y/N): ").strip().lower()
+            if choice == 'y':
+                cmd_ignore()
+                print("\n" + "="*40 + "\n")
+                print_step("Riprendo l'inizializzazione del progetto...")
+            else:
+                print_warn("Ottimizzazione .repomixignore saltata.")
         else:
             print_warn("Ignoro ottimizzazione .repomixignore per flusso automatico.")
     # --------------------------------------
@@ -788,122 +791,132 @@ def save_state():
     with open(STATE_FILE, "w") as f: json.dump(get_file_hashes(), f)
 
 def cmd_apply():
-    print_step("Analisi Clipboard XML...")
-    raw_content = pyperclip.paste()
-    match = re.search(r'<changes>(.*?)</changes>', raw_content, re.DOTALL)
-    if not match: return print_error("Nessun tag <changes> trovato.")
-    
-    try: root = ET.fromstring(f"<changes>{match.group(1)}</changes>")
-    except ET.ParseError as e: return print_error(f"Errore XML: {e}")
-
-    changes_count = 0
-    shell_commands = []
-    failed_snippets = []
-
-    for file_node in root.findall('file'):
-        path = file_node.get('path')
-        content = clean_code_content(file_node.text or "")
-        if content and not content.endswith('\n'):
-            content += '\n'
-        dirname = os.path.dirname(path)
-        if dirname:
-            os.makedirs(dirname, exist_ok=True)
-        with open(path, 'w', encoding='utf-8') as f: f.write(content)
-        print_success(f"[FILE] Scritto: {path}")
-        changes_count += 1
-
-    for snippet in root.findall('snippet'):
-        path = snippet.get('path')
-        # Gestione sicura dei nodi figlio
-        original_node = snippet.find('original')
-        edit_node = snippet.find('edit')
+    while True:
+        print_step("Analisi Clipboard XML...")
+        raw_content = pyperclip.paste()
+        match = re.search(r'<changes>(.*?)</changes>', raw_content, re.DOTALL)
         
-        original_text = clean_code_content(original_node.text) if original_node is not None else ""
-        edit_text = clean_code_content(edit_node.text) if edit_node is not None else ""
-
-        # Tenta l'applicazione
-        if apply_snippet_fuzzy(path, original_text, edit_text):
-            changes_count += 1
+        if not match: 
+            print_error("Nessun tag <changes> trovato.")
         else:
-            failed_snippets.append(path)
-
-    for del_node in root.findall('delete_file'):
-        path = del_node.get('path')
-        if os.path.exists(path):
-            os.remove(path)
-            print_warn(f"[DEL] Eliminato: {path}")
-            changes_count += 1
-            
-    shell_commands = [] # Reset lista comandi
-    shell_node = root.find('shell')
-    if shell_node is not None:
-        raw_cmd = clean_code_content(shell_node.text)
-        if raw_cmd:
-            # Divide in righe ignorando quelle vuote
-            shell_commands = [l.strip() for l in raw_cmd.splitlines() if l.strip()]
-
-    save_state()
-    
-    # --- NUOVO MENU INTERATTIVO SHELL (Lineare) ---
-    if shell_commands:
-        print(f"\n{Fore.YELLOW}Comandi shell suggeriti:{Style.RESET_ALL}")
-        for i, cmd in enumerate(shell_commands, 1):
-            print(f"{Fore.CYAN}{i}.{Style.RESET_ALL} {cmd}")
-        
-        print(f"\n{Fore.YELLOW}Scegli un'azione:{Style.RESET_ALL}")
-        print(f"1) {Fore.GREEN}Esegui{Style.RESET_ALL} (Default)")
-        print(f"2) {Fore.BLUE}Modifica ed Esegui{Style.RESET_ALL}")
-        print(f"3) {Fore.RED}Ignora{Style.RESET_ALL}")
-        
-        choice = smart_input(f"\nScelta [1]: ").strip()
-        
-        # --- GESTIONE MODIFICA ---
-        if choice == "2":
-            current_block = "\n".join(shell_commands)
-            print(f"{Fore.YELLOW}Modifica i comandi (CTRL+INVIO per confermare ed eseguire):{Style.RESET_ALL}")
-            
-            # Qui si apre l'editor con il testo precompilato
-            new_input = get_multiline_input("", default_text=current_block)
-            
-            # Aggiorniamo la lista comandi
-            if new_input.strip():
-                shell_commands = [l.strip() for l in new_input.splitlines() if l.strip()]
-            else:
-                print_warn("Lista comandi svuotata.")
-                shell_commands = []
-            
-            # Forziamo la scelta a "1" per far scattare l'esecuzione subito dopo
-            choice = "1"
-
-        # --- GESTIONE ESECUZIONE ---
-        if choice == "" or choice == "1":
-            if shell_commands:
-                print_step("Esecuzione comandi...")
-                for cmd in shell_commands:
-                    print(f"> {cmd}")
-                    # check=False permette di continuare anche se un comando da warning
-                    subprocess.run(cmd, shell=True, check=False)
-            else:
-                print_warn("Nessun comando da eseguire.")
+            try: 
+                root = ET.fromstring(f"<changes>{match.group(1)}</changes>")
                 
-        elif choice == "3":
-            print_warn("Comandi ignorati.")
+                changes_count = 0
+                shell_commands = []
+                failed_snippets = []
 
-    # NUOVO: Gestione fallimenti e generazione prompt di ripristino
-    if failed_snippets:
-        print_error(f"\nAttenzione: {len(failed_snippets)} snippet non sono stati applicati.")
-        # Formatta la lista dei file per il prompt
-        file_list_str = "\n".join([f"- {f}" for f in failed_snippets])
-        recovery_prompt = f"""Le seguenti patch in modalità Snippet non hanno funzionato (match non perfetto con l'originale), perciò ti chiedo per questi file di riscrivermi l'output, questa volta usando la modalità FULL REWRITE; attenzione doppia alla fedeltà con i file originali: 
-            {file_list_str}"""
-        pyperclip.copy(recovery_prompt)
-        print_success("✅ Prompt di ripristino copiato negli appunti!\n")
-        print("👉 1. Incolla il prompt nella chat per far correggere all'LLM i file rimanenti.")
-        print("👉 2. Poi COPIA la sua risposta qui e premi INVIO.")
+                for file_node in root.findall('file'):
+                    path = file_node.get('path')
+                    content = clean_code_content(file_node.text or "")
+                    if content and not content.endswith('\n'):
+                        content += '\n'
+                    dirname = os.path.dirname(path)
+                    if dirname:
+                        os.makedirs(dirname, exist_ok=True)
+                    with open(path, 'w', encoding='utf-8') as f: f.write(content)
+                    print_success(f"[FILE] Scritto: {path}")
+                    changes_count += 1
+
+                for snippet in root.findall('snippet'):
+                    path = snippet.get('path')
+                    # Gestione sicura dei nodi figlio
+                    original_node = snippet.find('original')
+                    edit_node = snippet.find('edit')
+                    
+                    original_text = clean_code_content(original_node.text) if original_node is not None else ""
+                    edit_text = clean_code_content(edit_node.text) if edit_node is not None else ""
+
+                    # Tenta l'applicazione
+                    if apply_snippet_fuzzy(path, original_text, edit_text):
+                        changes_count += 1
+                    else:
+                        failed_snippets.append(path)
+
+                for del_node in root.findall('delete_file'):
+                    path = del_node.get('path')
+                    if os.path.exists(path):
+                        os.remove(path)
+                        print_warn(f"[DEL] Eliminato: {path}")
+                        changes_count += 1
+                        
+                shell_commands = [] # Reset lista comandi
+                shell_node = root.find('shell')
+                if shell_node is not None:
+                    raw_cmd = clean_code_content(shell_node.text)
+                    if raw_cmd:
+                        # Divide in righe ignorando quelle vuote
+                        shell_commands = [l.strip() for l in raw_cmd.splitlines() if l.strip()]
+
+                save_state()
+                
+                # --- NUOVO MENU INTERATTIVO SHELL (Lineare) ---
+                if shell_commands:
+                    print(f"\n{Fore.YELLOW}Comandi shell suggeriti:{Style.RESET_ALL}")
+                    for i, cmd in enumerate(shell_commands, 1):
+                        print(f"{Fore.CYAN}{i}.{Style.RESET_ALL} {cmd}")
+                    
+                    print(f"\n{Fore.YELLOW}Scegli un'azione:{Style.RESET_ALL}")
+                    print(f"1) {Fore.GREEN}Esegui{Style.RESET_ALL} (Default)")
+                    print(f"2) {Fore.BLUE}Modifica ed Esegui{Style.RESET_ALL}")
+                    print(f"3) {Fore.RED}Ignora{Style.RESET_ALL}")
+                    
+                    choice = smart_input(f"\nScelta [1]: ").strip()
+                    
+                    # --- GESTIONE MODIFICA ---
+                    if choice == "2":
+                        current_block = "\n".join(shell_commands)
+                        print(f"{Fore.YELLOW}Modifica i comandi (CTRL+INVIO per confermare ed eseguire):{Style.RESET_ALL}")
+                        
+                        # Qui si apre l'editor con il testo precompilato
+                        new_input = get_multiline_input("", default_text=current_block)
+                        
+                        # Aggiorniamo la lista comandi
+                        if new_input.strip():
+                            shell_commands = [l.strip() for l in new_input.splitlines() if l.strip()]
+                        else:
+                            print_warn("Lista comandi svuotata.")
+                            shell_commands = []
+                        
+                        # Forziamo la scelta a "1" per far scattare l'esecuzione subito dopo
+                        choice = "1"
+
+                    # --- GESTIONE ESECUZIONE ---
+                    if choice == "" or choice == "1":
+                        if shell_commands:
+                            print_step("Esecuzione comandi...")
+                            for cmd in shell_commands:
+                                print(f"> {cmd}")
+                                # check=False permette di continuare anche se un comando da warning
+                                subprocess.run(cmd, shell=True, check=False)
+                        else:
+                            print_warn("Nessun comando da eseguire.")
+                            
+                    elif choice == "3":
+                        print_warn("Comandi ignorati.")
+
+                # NUOVO: Gestione fallimenti e generazione prompt di ripristino
+                # NUOVO: Gestione fallimenti e generazione prompt di ripristino
+                if failed_snippets:
+                    print_error(f"\nAttenzione: {len(failed_snippets)} snippet non sono stati applicati.")
+                    # Formatta la lista dei file per il prompt
+                    file_list_str = "\n".join([f"- {f}" for f in failed_snippets])
+                    recovery_prompt = f"""Le seguenti patch in modalità Snippet non hanno funzionato (match non perfetto con l'originale), perciò ti chiedo per questi file di riscrivermi l'output, questa volta usando la modalità FULL REWRITE; attenzione doppia alla fedeltà con i file originali: 
+                        {file_list_str}"""
+                    pyperclip.copy(recovery_prompt)
+                    print_success("✅ Prompt di ripristino copiato negli appunti!\n")
+                    print("👉 1. Incolla il prompt nella chat per far correggere all'LLM i file rimanenti.")
+                    print(f"👉 2. {Fore.YELLOW}COPIA la risposta del chatbot{Style.RESET_ALL} e torna qui.")
+                    print(f"\n{Fore.YELLOW}Quando hai copiato la correzione, premi INVIO per applicarla (ESC per uscire).{Style.RESET_ALL}")
+                else:
+                    print_success("Tutte le modifiche sono state applicate con successo.")
+                    print(f"\n{Fore.YELLOW}Premere INVIO per elaborare un altro blocco XML, ESC per terminare.{Style.RESET_ALL}")
+
+            except ET.ParseError as e: 
+                print_error(f"Errore XML: {e}")
+                print(f"\n{Fore.YELLOW}Premere INVIO per riprovare, ESC per terminare.{Style.RESET_ALL}")
+
         wait_for_enter()
-        cmd_apply()
-    else:
-        print_success("Tutte le modifiche sono state applicate con successo.")
 
 def cmd_mod(auto_input=None):
     old_hashes = {}
@@ -1168,6 +1181,15 @@ def cmd_ignore():
     wait_for_enter()
 
     raw_clipboard = pyperclip.paste()
+    
+    # --- CHECK CHECK SKIP (Input == Output) ---
+    # Se l'utente preme invio senza copiare nulla, negli appunti c'è ancora il prompt.
+    if final_prompt.strip()[:50] == raw_clipboard.strip()[:50]:
+        print_warn("Rilevato stesso contenuto negli appunti. Ottimizzazione ignorata.")
+        # Pulizia temp
+        if os.path.exists(temp_repomix_out):
+            os.remove(temp_repomix_out)
+        return
     
     # Pulizia dai backtick
     content = clean_code_content(raw_clipboard)
