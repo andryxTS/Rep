@@ -65,7 +65,7 @@ Devi scegliere il formato in base a regole rigide. Non ottimizzare per la lunghe
     *   `<snippet path="path/to/file">` per modifiche mirate (Search & Replace).
         *   Dentro snippet usa `<original>` (codice da cercare) e `<edit>` (codice da sostituire).
     *   `<delete_file path="path/to/file" />` per file eliminati.
-    *   `<shell>` comandi da eseguire nel terminale (es. pnpm install) `</shell>`
+    *   `<shell>` comandi da eseguire nel terminale (es. pnpm install e migrazioni db) per rendere funzionanti le nuove modifiche `</shell>`
 2.  **WRAPPER ESTERNO:** Restituisci l'intero output XML racchiuso in un unico blocco Markdown con **4 backticks** (````xml).
 3.  **CONTENUTO CODICE:**
     *   Usa SEMPRE `<![CDATA[ ... ]]>` per il contenuto dei file.
@@ -115,6 +115,8 @@ export default function ExampleTemplate({ title }: ExampleProps) {
  <!-- Per i comandi a shell da eseguire: -->
     <shell>
         pnpm add -D new-library
+        pnpm drizzle-kit generate
+        echo "y" | pnpm wrangler d1 migrations apply nome-del-db --local
     </shell>
 </changes>
 ````

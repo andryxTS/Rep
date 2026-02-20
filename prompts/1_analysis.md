@@ -22,6 +22,7 @@ Ti chiederò di effettuare alcune modifiche al mio codebase. Per adesso farai un
 * Dati dinamici: Se trovi collegamenti a CMS (es. Sanity), mantieni l'approccio, evita contenuti hardcoded (eccetto fallback).
 * initialValue: se aggiungi campi a Sanity, includi sempre un initialValue.
 * Installazione pacchetti Node.js: di default usa `pnpm`, NON usare `npm`. Usa npm solo se dall'analisi del mio codice ti accorgi che inequivocabilmente usato npm per quell'app.
+* Se vedi che ci sono database collegati ricordati di includermi i comandi per rendere funzionanti le nuove modifiche (es: generate e migrate).
 
 **MODIFICHE RICHIESTE:**
 {user_input}
