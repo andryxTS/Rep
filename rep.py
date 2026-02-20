@@ -1354,7 +1354,7 @@ def cmd_new():
         print("👉 Ho aperto la cartella. Trascina i 2 file nella NUOVA chat.")
         
 def main():
-    if len(sys.argv) < 2: return print(f"Uso: rep [init|apply|mod|check|ignore|new]")
+    if len(sys.argv) < 2: cmd_apply()
     action = sys.argv[1]
     if action == "init": cmd_init()
     elif action == "apply": cmd_apply()
