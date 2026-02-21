@@ -39,7 +39,10 @@ drizzle.config.ts
 prisma.config.ts
 next.config.js
 next.config.ts
+open-next.config.js
+open-next.config.ts
 middleware.ts
+utils.ts
 .env.example
 
 **Regole**
