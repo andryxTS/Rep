@@ -588,17 +588,12 @@ def normalize_line(line):
     """
     Pulisce una riga per il confronto 'fuzzy':
     - Rimuove spazi a inizio/fine.
-    - Rimuove commenti (// o #).
     - Riduce spazi multipli interni a uno solo.
     Restituisce None se la riga diventa vuota dopo la pulizia.
     """
     # Rimuove whitespace laterali
     line = line.strip()
     
-    # Rimuove i commenti (gestione base per python/js/jsonc)
-    if line.startswith('//') or line.startswith('#'):
-        return None
-        
     # Se la riga è vuota, la ignoriamo
     if not line:
         return None
@@ -1102,12 +1097,14 @@ def cmd_ignore():
 
     # 1. Recupero contenuto ignore attuale e creazione file locale se assente
     current_ignore_content = ""
+    local_ignore_content_for_prompt = ""
     local_ignore = ".repomixignore"
     
     # MANTENUTA LOGICA ORIGINALE: check esistenza locale o creazione da globale
     if os.path.exists(local_ignore):
         with open(local_ignore, "r", encoding="utf-8") as f:
             current_ignore_content = f.read()
+        local_ignore_content_for_prompt = current_ignore_content
     else:
         # Se non esiste, determiniamo il contenuto iniziale
         if os.path.exists(GLOBAL_IGNORE_FILE):
@@ -1121,6 +1118,9 @@ def cmd_ignore():
         # Scrittura fisica del file nella cartella di lavoro
         with open(local_ignore, "w", encoding="utf-8", newline='\n') as f:
             f.write(current_ignore_content.strip())
+            
+        # Impostiamo il testo per il prompt indicando che il file non c'era
+        local_ignore_content_for_prompt = "Al momento non è presente alcun file .repomixignore nel progetto."
 
     # 2. Esecuzione Repomix per ottenere la lista file attuale
     print_step("Esecuzione Repomix per analisi struttura...")
@@ -1156,7 +1156,8 @@ def cmd_ignore():
             global_ignore_content = f.read()
 
     # Lettura esplicita del Local Ignore (già letto sopra in current_ignore_content, ma per chiarezza)
-    local_ignore_content = current_ignore_content
+    # Lettura esplicita del Local Ignore (impostata in precedenza per distinguere se era assente)
+    local_ignore_content = local_ignore_content_for_prompt
 
     try:
         with open(PROMPT_CREA_REPOMIXIGNORE, "r", encoding="utf-8") as f:
