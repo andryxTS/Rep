@@ -1354,6 +1354,54 @@ def cmd_new():
         open_folder(TEMP_DIR)
         print("👉 Ho aperto la cartella. Trascina i 2 file nella NUOVA chat.")
         
+def cmd_invert():
+    print_step("Analisi Clipboard XML per UNDO...")
+    raw_content = pyperclip.paste()
+    
+    # Trick per evitare che il parser XML si chiuda prematuramente leggendo questo codice
+    tag_open = "<" + "changes>"
+    tag_close = "</" + "changes>"
+    
+    match = re.search(tag_open + r'(.*?)' + tag_close, raw_content, re.DOTALL)
+    if not match: 
+        return print_error(f"Nessun tag {tag_open} trovato negli appunti.")
+        
+    try: 
+        root = ET.fromstring(f"{tag_open}{match.group(1)}{tag_close}")
+        fails, count = [], 0
+        
+        # Avviso se l'XML contiene tag non supportati da invert
+        if root.findall('file') or root.findall('delete_file') or root.find('shell') is not None:
+            print_warn("⚠ Ignorati <file>, <delete_file> e <shell> (invert supporta solo gli snippet).")
+            
+        for snip in root.findall('snippet'):
+            p = snip.get('path')
+            o_node = snip.find('original')
+            e_node = snip.find('edit')
+            
+            o_txt = clean_code_content(o_node.text) if o_node is not None else ""
+            e_txt = clean_code_content(e_node.text) if e_node is not None else ""
+            
+            # INVERSIONE REALE: cerchiamo 'edit' e ripristiniamo 'original'
+            if apply_snippet_fuzzy(p, e_txt, o_txt): 
+                count += 1
+            else: 
+                fails.append(p)
+                
+        save_state()
+        
+        if fails:
+            print_error(f"❌ {len(fails)} snippet non invertiti (possibili modifiche manuali intercorse).")
+            pyperclip.copy("Le seguenti patch in modalità Snippet non hanno funzionato in undo, ripristinale tu in modalità FULL REWRITE:\n" + "\n".join([f"- {f}" for f in fails]))
+            print_success("✅ Prompt di ripristino copiato! Incollalo nella chat.")
+        elif count > 0: 
+            print_success(f"✅ Ripristino completato ({count} snippet).")
+        else: 
+            print_warn("Nessuno snippet elaborato.")
+            
+    except ET.ParseError as e: 
+        print_error(f"Errore XML: {e}")
+
 def main():
     if len(sys.argv) < 2: cmd_apply()
     action = sys.argv[1]
@@ -1363,6 +1411,7 @@ def main():
     elif action == "check": cmd_check()
     elif action == "ignore": cmd_ignore()
     elif action == "new": cmd_new()
+    elif action in ["invert", "undo", "annulla", "cancel", "ripristina"]: cmd_invert()
 
 if __name__ == "__main__":
     try:
