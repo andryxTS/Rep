@@ -1,3 +1,539 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.gitignore
+.rep_state.json
+.repomixignore
+prompts/.repomixignore.template
+prompts/0_crea_repomixignore.md
+prompts/1_analysis.md
+prompts/2_execute.md
+prompts/3_new_session.md
+prompts/best_practice.md
+prompts/formato_output.md
+prompts/procedura_analisi.md
+prompts/procedura_scrittura.md
+rep.bat
+rep.py
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="prompts/procedura_analisi.md">
+* Analizza il codebase, capendo: architettura, approccio, stile, flusso dei dati.
+* Poni attenzione sulle dipendenze, sulle librerie utilizzate e sui modi in cui vengono prelevati e renderizzati i dati.
+* Leggi le modifiche che ti propongo, pensa ad un piano su come applicarle; ci saranno probabilmente da prendere delle decisioni: voglio essere coinvolto in queste decisioni.
+* Chiedimi il feedback riguardo alle scelte da fare presentandomele come elenco numerato con più opzioni (es. A, B, C...). TUTTAVIA: se una delle opzioni è chiaramente una best-practice o la scelta raccomandata/consigliata, decidi in autonomia per quell'opzione. Se tutti i bivi decisionali rientrano in questo caso, non chiedermi nulla e invitami semplicemente a fornirti le istruzioni per la parte esecutiva.
+* Aspetta il mio feedback (se necessario) e le nuove istruzioni operative su come proseguire con il lavoro di coding vero e proprio.
+</file>
+
+<file path=".gitignore">
+TODO.md
+</file>
+
+<file path="prompts/.repomixignore.template">
+# --- Output & Dependencies ---
+node_modules/
+.next/
+out/
+build/
+dist/
+.cache/
+.pnpm-store/
+pnpm-lock.yaml
+pnpm-workspace.yaml
+package-lock.json
+yarn.lock
+bun.lockb
+.wrangler/
+.vercel/
+.turbo/
+
+# --- Tooling & Temporary Files ---
+.rep_state.json
+.rep_temp/
+repomix.config.json
+repomix-output.md
+repomix-output.xml
+*.log
+*.tmp
+*.bak
+*.swp
+.DS_Store
+Thumbs.db
+.env
+.git/
+!.github/workflows/
+.vscode/
+!.gitignore
+.repomixignore
+.eslintignore
+.prettierignore
+.editorconfig
+*.tsbuildinfo
+
+# --- UI Components & Styling ---
+# Escludiamo i componenti UI (Shadcn e simili) perché sono boilerplate che appesantiscono l'analisi della logica di business
+src/components/ui/
+components/ui/
+src/styles/
+**/webfonts/
+**/fonts/
+# Escludiamo i file CSS tranne globals.css (che spesso contiene direttive tailwind importanti)
+**/*.scss
+**/*.sass
+**/*.less
+# src/app/globals.css viene mantenuto implicitamente
+
+# --- Test, Playground & Demo ---
+src/app/_pagine-test/
+**/_test/
+**/_playground/
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/tests/
+**/__tests__/
+
+# --- Standard Config & Boilerplate ---
+# Rimuoviamo i file di config che l'LLM non deve modificare per compiti di logica/feature
+components.json
+next-env.d.ts
+postcss.config.*
+eslint.config.*
+.prettierrc*
+
+# --- Cloudflare & Deployment Tools ---
+.dev.vars
+# wrangler.toml e wrangler.jsonc vengono mantenuti per contesto deploy
+# docker-compose.yml e ecosystem.config.js sono mantenuti come richiesto
+
+# --- Database & Migrations ---
+prisma/migrations/
+drizzle/
+supabase/migrations/
+*.sql
+*.sqlite
+*.db
+
+# --- Documentation, Media & Assets ---
+public/
+assets/
+static/
+**/img/
+**/images/
+**/*.svg
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.ico
+**/*.pdf
+**/*.webp
+**/*.mp4
+**/*.mov
+**/*.md
+**/*.csv
+**/*.xml
+**/*.woff
+**/*.woff2
+**/*.ttf
+**/*.eot
+LICENSE
+*.txt
+
+# --- Local Scripts & Automation ---
+update_codebase.py
+*.sh
+scripts/
+# *.py rimosso per sicurezza, ma manteniamo i file specifici richiesti
+</file>
+
+<file path="prompts/best_practice.md">
+### ☁️ Regole specifiche per OpenNext Cloudflare
+*   **No Runtime Edge:** Non scrivere *mai* `export const runtime = 'edge'` nei file (es. Route Handlers o Pagine). OpenNext pacchettizza già tutto per i Workers; dichiararlo esplicitamente fa fallire il bundler di `@opennextjs/cloudflare`.
+*   **Tipizzazione Bindings:** Per usare i binding di Cloudflare (D1, KV, R2) estratti da `getCloudflareContext().env`, devi sempre dichiararli in un file globale (es. `src/cloudflare-env.d.ts`) estendendo l'interfaccia: `declare global { interface CloudflareEnv { NOME_BINDING: D1Database } }`.
+  
+### 🗄️ Database & Drizzle ORM (SQLite / D1)
+*   **Limiti ALTER TABLE SQLite:** Quando aggiungi una **nuova colonna** a una tabella *già esistente* in SQLite/D1, **NON USARE MAI** un valore di default dinamico come `.default(sql`(CURRENT_TIMESTAMP)`)`. SQLite non lo supporta tramite `ALTER TABLE ADD COLUMN` e la migrazione fallirà. Gestisci l'aggiornamento del timestamp programmaticamente dal codice TypeScript.
+
+### 🛡️ TypeScript & Gestione Dati
+*   **Risposte JSON (Strict Mode):** Quando usi `await res.json()`, il tipo inferito è spesso `unknown`. Effettua sempre un cast esplicito (es. `(await res.json()) as any` oppure con un'interfaccia dedicata) per evitare l'errore `Object is of type unknown`.
+*   **Fallback Obbligatori (Strict Null Checks):** Quando passi dati tra funzioni o API esterne, usa *sempre* fallback sicuri (es. `const data = res.data || "";`) o l'optional chaining (`obj?.property`) per proteggere il codice da valori `null` o `undefined` imprevisti.
+
+### 🔐 Clerk (Autenticazione)
+*   **Middleware Options:** Nelle versioni recenti di Clerk per Next.js App Router, non passare opzioni di routing come `{ afterSignOutUrl: "/" }` all'interno di `clerkMiddleware()`. Fallisce il type-checking ("No overload matches this call"). Usa invece le variabili d'ambiente nel file `.env` (es. `NEXT_PUBLIC_CLERK_AFTER_SIGN_OUT_URL=/`).
+
+### 🛠️ Misure Correttive e Troubleshooting pre-build
+**L'AI deve segnalare e proporre una correzione immediata se nota che:**
+*   C'è una cartella come `scripts/` o `tests/` nel progetto ma **non è stata esclusa** nell'array `"exclude"` del `tsconfig.json` (causa fallimento della build per type-checking troppo espansivo).
+*   In `next.config.ts` manca l'impostazione `eslint: { ignoreDuringBuilds: true }` (i warning di stile come `any` o variabili non usate bloccano il deploy di Next.js).
+* **Controllo .gitignore:** Verifica sempre che il `.gitignore` non stia escludendo file vitali per il progetto. Le cartelle `/drizzle` (migrazioni SQL), `/public` (asset statici) e l'estensione `*.md` (documentazione e file di sistema come questo) **DEVONO** essere tracciate su Git. Se noti queste esclusioni, avvisa immediatamente l'utente e proponi la correzione. Escludi solo file temporanei specifici dell'AI (es. `PROMPT.md`, `repomix-output.txt`).
+</file>
+
+<file path="prompts/procedura_scrittura.md">
+* Pianifica le operazioni che dovrai eseguire, cura ogni dettaglio.
+* Scrivi questo piano in chiaro, prima di cominciare il lavoro di coding.
+* VINCOLO DI ESISTENZA DEI PATH: Prima di generare un <file> o uno <snippet>, devi obbligatoriamente verificare che il path esista esattamente come elencato nella sezione 'Directory Structure' o all'interno dei tag <file path="..."> del file repomix-output.txt fornito. Non inventare percorsi basandoti su convenzioni (es. non assumere /components/ui/ se il file è in /components/). Se un file non esiste nel contesto, non tentare di modificarlo.
+* Scrivi un piccolo riepilogo testuale con i file che dovrai modificare/aggiungere/eliminare [EDIT] / [NEW] / [DELETE]; per ognuno di questi, prima di scriverlo, verifica che il path e file esistano realmente, come suggerito al punto precedente.
+* Scrivi il nuovo codice per le pagine modificate o nuove, PER INTERO (salvo uso snippets), nel formato XML specificato sotto, **modifica solo quanto necessario** e **mantieni intatto il resto, compresi i commenti, LA FEDELTÀ ESTREMA È RICHIESTA E CRUCIALE**).
+* Dichiarazione Strategia: Nel tuo riepilogo testuale, per ogni file devi scrivere esplicitamente: "File: [nome], Righe stimate: [N], Strategia: [FULL REWRITE / SNIPPET]". Se scrivi "SNIPPET" per un file piccolo, l'operazione sarà considerata un errore.
+* Riportami dentro i tag <shell></shell> tutti i comandi a terminale (windows, integrato in VS Code) necessari per far funzionare le nuove modifiche (tralascia pnpm build o pnpm dev, quello è scontato e solitamente c'è l'ho costantemente attivo). Quando vedi che l'app si interfaccia con dei db dammi gli appositi comandi di generate e migrazione se le modifiche lo rendono necessario. Di default dammi i comandi per aggiornare il sistema in locale, perché di base lavorarerò più che altro in locale. Ad esempio se sto usando drizzle su un D1 all'interno del tag shell aggiungerai:
+   pnpm drizzle-kit generate
+   echo "y" | pnpm wrangler d1 migrations apply nome-del-db --local
+</file>
+
+<file path="rep.bat">
+@echo off
+python "C:\Programmi senza install\Rep\rep.py" %*
+</file>
+
+<file path=".repomixignore">
+!prompts/
+!.md
+TODO.md
+README.md
+</file>
+
+<file path="prompts/0_crea_repomixignore.md">
+**Contesto**
+Devo mandare l'intero codebase del mio progetto a un chatbot LLM per l'analisi globale e l'effettuazione di alcune modifiche.
+
+**Task**
+Devi darmi il contenuto del file `.repomixignore`, in modo che il codebase esportato da repomix sia il più leggero possibile ma completo in ogni sua parte (tutto ciò che può servire all'analisi globale dell'llm, scartando tutto il resto che andrebbe solo ad appesantire: es. assets, package-lock, ecc.).
+
+**Input**
+Ecco i dati su cui lavorare:
+
+1. **Global Ignore (Riferimento)**
+Questo è il file di esclusione "standard" che uso per tutti i progetti. Usalo come base intoccabile.
+```
+{global_ignore}
+```
+
+2. **Local Ignore (Progetto Attuale)**
+Questo è il file `.repomixignore` attualmente presente nella cartella del progetto.
+```
+{local_ignore}
+```
+
+3. **Lista File Attuale**
+Questa è la lista dei file che repomix sta attualmente includendo tramite local ignore (e che forse dovremmo filtrare meglio).
+```
+{file_list}
+```
+
+**Eccezioni**
+Sui seguenti file fai un'eccezione, mantienili nell'output di repomix se sono presenti:
+docker-compose.yml
+ecosystem.config.js
+proxy.ts
+package.json
+tsconfig.json
+jsconfig.json
+tailwind.config.js
+tailwind.config.ts
+drizzle.config.ts
+prisma.config.ts
+next.config.js
+next.config.ts
+open-next.config.js
+open-next.config.ts
+middleware.ts
+utils.ts
+.env.example
+
+**Regole**
+1. **Merge Additivo**: Parti dal **Global Ignore**. Aggiungi le regole del **Local Ignore**. Infine, aggiungi nuove regole basandoti sulla **Lista File** per escludere file inutili non ancora coperti.
+2. **Nessuna sovrascrittura**: Non rimuovere regole presenti nel Global Ignore.
+3. **Nessuna eccezione manuale**: Non usare la sintassi `!file`. Se un file deve essere incluso (come le eccezioni sopra), semplicemente assicurati che non ci sia una regola che lo escluda.
+
+**Output**
+Esegui la tua analisi e scrivimi:
+* L'elenco dei file che hai deciso di aggiungere alle regole di esclusione.
+* Il file `.repomixignore` FINALE COMPLETO (Globale + Locale + Nuove aggiunte).
+* Mettimi il file per intero dentro 3 backtick.
+</file>
+
+<file path="prompts/3_new_session.md">
+**CONTESTO: NUOVA SESSIONE**
+Sopra trovi il riassunto delle attività svolte nella sessione precedente, inclusa l'analisi architetturale e lo stato dell'arte.
+In allegato trovi il file `repomix-output.txt` che contiene l'intero codebase aggiornato allo stato attuale.
+
+**TASK**
+1. Leggi il riassunto per allinearti sul contesto.
+2. Analizza il codebase allegato per confermare i dettagli tecnici.
+3. Attendi indicazioni su come proseguire il lavoro di modifica/debug.
+
+**PROCEDURA E FORMATO**
+Attieniti alle seguenti regole:
+{procedura_analisi}
+
+**BEST PRACTICE**
+* Best-practice: il lavoro dovrà essere eseguito secondo le best-practice per il framework in questione (ad esempio uso Image invece che img, valori di fallback, separazione logica/layout, ecc.).
+* Practice del mio repo: Eccezione alla regola precedente: adattati all'approccio che vedi utilizzato nel mio repo (se ad esempio il mio repo utilizza qualcosa che non è esattamente tra le best-practice, adattati comunque all'approccio del mio repo, previa approvazione mia, ricordati di richiedermi il feedback).
+* Dati dinamici: Se trovi collegamenti a CMS (es. Sanity), mantieni l'approccio, evita contenuti hardcoded (eccetto fallback).
+* initialValue: se aggiungi campi a Sanity, includi sempre un initialValue.
+* Segui le altre best-practice incluse di seguito, servono a scongiurare e prevenire errori e perdite di tempo. Fai questi controlli in sordina, avvisami e proponimi soluzioni solo se noti delle evidenti criticità:
+
+**SYSTEM PROMPT - BEST PRACTICES**
+*(Le seguenti regole sono estratte dal file `prompts/best_practice.md`. Se durante il lavoro affronti e risolvi un problema molto comune o insidioso che andrebbe prevenuto globalmente in futuro, potrai proporre una regola aggiuntiva a questo file usando il tag `<best_practice_append>` in fase di esecuzione XML).*
+{best_practice}
+
+## Fase ESECUTIVA
+Quando entri nella fase esecutiva, di coding, ricordati che è MOLTO delicata, perché sei chiamato a modificare più file, perché è un'app in produzione, perché NON abbiamo a disposizione più tentativi, dev'essere one-shot e il tuo output verrà automaticamente convertito in modifiche al mio repo (i file verranno sovrascritti!).
+Quindi quando entrerai in questa fase seguirai queste indicazioni:
+
+### Procedura
+* Analizza il mio feedback.
+* Rivedi la tua analisi fatta in precedenza.
+* Pianifica le operazioni che dovrai eseguire, cura ogni dettaglio.
+* Scrivi questo piano in chiaro, prima di cominciare il lavoro di coding.
+* VINCOLO DI ESISTENZA DEI PATH: Prima di generare un <file> o uno <snippet>, devi obbligatoriamente verificare che il path esista esattamente come elencato nella sezione 'Directory Structure' o all'interno dei tag <file path="..."> del file repomix-output.txt fornito. Non inventare percorsi basandoti su convenzioni (es. non assumere /components/ui/ se il file è in /components/). Se un file non esiste nel contesto, non tentare di modificarlo.
+* Scrivi un piccolo riepilogo testuale con i file che dovrai modificare/aggiungere/eliminare [EDIT] / [NEW] / [DELETE]; per ognuno di questi, prima di scriverlo, verifica che il path e file esistano realmente, come suggerito al punto precedente.
+* Scrivi il nuovo codice per le pagine modificate o nuove, PER INTERO (salvo uso snippets), nel formato XML specificato sotto, **modifica solo quanto necessario** e **mantieni intatto il resto, compresi i commenti, LA FEDELTÀ ESTREMA È RICHIESTA E CRUCIALE**).
+* Dichiarazione Strategia: Nel tuo riepilogo testuale, per ogni file devi scrivere esplicitamente: "File: [nome], Righe stimate: [N], Strategia: [FULL REWRITE / SNIPPET]". Se scrivi "SNIPPET" per un file piccolo, l'operazione sarà considerata un errore.
+* Riportami dentro i tag <shell></shell> tutti i comandi a terminale (windows, integrato in VS Code) necessari per far funzionare le nuove modifiche (tralascia pnpm build o pnpm dev, quello è scontato e solitamente c'è l'ho costantemente attivo). Quando vedi che l'app si interfaccia con dei db dammi gli appositi comandi di generate e migrazione se le modifiche lo rendono necessario. Di default dammi i comandi per aggiornare il sistema in locale, perché di base lavorarerò più che altro in locale. Ad esempio se sto usando drizzle su un D1 all'interno del tag shell aggiungerai:
+   pnpm drizzle-kit generate
+   echo "y" | pnpm wrangler d1 migrations apply nome-del-db --local
+
+{formato_output}
+</file>
+
+<file path=".rep_state.json">
+{".\\.gitignore": "eafe2d17d9888284b53a8c630f0c568e", ".\\rep.bat": "d44a6eab504d54ea925e8d682ec77bc0", ".\\rep.py": "e011801dfa57ac0fdc37478d5e392899", ".\\prompts\\.repomixignore.template": "a75f6946b91bb1223bc8078af0f1bbf8"}
+</file>
+
+<file path="prompts/formato_output.md">
+### Formato Snippets (per piccole modifiche)
+Quando scegli per alcuni file il formato snippets, per le piccole modifiche, devi includere:
+1. in modo ASSOLUTAMENTE FEDELE (cruciale!) lo snippet di codice originale da sostituire, lo racchiuderai contornato tra 3 backtick dentro il tag <original>, 
+2. lo snippet nuovo che andrà a sostituire l'originale, racchiuso fra 3 backtick, dentro il tag <edit>
+Massima attenzione, perché il tuo output verrà elaborato automaticamente da uno script che cercherà nel file la stringa di testo indicata in <original> e la sostituirà con il testo contenuto in <edit>; ovviamente questa cosa funziona fintante che:
+* Ciò che è contenuto in <original> è assolutamente FEDELE al file originale che ti ho passato in contesto. ⚠️ VINCOLO DI FEDELTÀ ESTREMA: Quando compili il tag <original>, non ricostruire il codice a memoria e non riassumere. Devi eseguire una ricerca testuale nel codebase che ti ho inviato, individuare il blocco esatto di righe e copiarlo carattere per carattere, inclusi i commenti. Se il contenuto di <original> non è identico al 100% al file sorgente, l'intera operazione fallirà. Se hai dubbi sulla versione esatta, chiedi conferma invece di ipotizzare.
+* Ciò che è contenuto in <edit> è pensato per sostituire ciò che è contenuto in <original> garantendo il funzionamento del codice.
+*   Usa SEMPRE `<![CDATA[ ... ]]>` per il contenuto dei file.
+*   All'interno dei CDATA, racchiudi il codice del file in un blocco Markdown standard con **3 backticks** (es: ```tsx o ```css).
+*   **Indentazione:** Mantieni l'indentazione perfetta dentro i 3 backticks. NON minificare.
+
+**Esempio Snippet 1 (modifica righe):**
+<snippet path="src/utils.ts">
+    <original><![CDATA[
+        ```
+            const x = 10;
+        ```
+    ]]></original>
+    <edit><![CDATA[
+        ```
+            const x = 20;
+        ```
+    ]]></edit>
+</snippet>
+
+**Esempio Snippet 2 (aggiunta righe):**
+<snippet path="src/utils.ts">
+    <original><![CDATA[
+    ```
+        const x = 10;
+        const y = 5;
+    ```
+    ]]></original>
+    <edit><![CDATA[
+    ```
+        const x = 10;
+        const z = 15; // Riga aggiunta
+        const y = 5;
+    ```
+    ]]></edit>
+</snippet>
+
+**ATTENZIONE: IL TUO OUTPUT VERRÀ RIGETTATO SE:**
+* Il contenuto di <original> non matcha bit-per-bit il file sul disco (esclusi gli indent che vengono ignorati per il match).
+* Cerchi di "riassumere" il codice in <original> (es. usando ... o commenti tipo // resto del codice).
+* All'interno del blocco <original> cambi l'ordine di proprietà, dichiarazioni, espressioni. (se cambia l'ordine non ottengo più il match indispensabile per eseguire la patch)
+
+**SCELTA DEL FORMATO: FULL REWRITE vs SNIPPET**
+Devi scegliere il formato in base a regole rigide. Non ottimizzare per la lunghezza del tuo output, ottimizza per la sicurezza dell'esecuzione.
+1.  **Formato `<file>` (FULL REWRITE):**
+    *   **OBBLIGATORIO** se il file ha meno di 150 righe.
+    *   **OBBLIGATORIO** se devi modificare più del 30% del file.
+    *   **OBBLIGATORIO** se devi riscrivere intere funzioni o blocchi di codice lunghi (> 25 righe).
+    *   *Istruzione:* Riscrivi l'intero file da cima a fondo (SII ESTREMAMENTE FEDELE AL FILE ORIGINALE bit-per-bit tranne ovviamente per le righe da modificare).
+2.  **Formato `<snippet>` (SEARCH & REPLACE):**
+    *   **PERMESSO SOLO** se il file è grande (> 150 righe) e la modifica è chirurgica (es. cambiare da 1 a 25 righe di codice).
+    *   *Istruzione:*
+        *   Dentro `<original>`: Devi copiare una porzione di codice UNICA ed ESISTENTE. **AVVISO CRITICO:** Mentre le indentazioni sono ignorate, per tutto il resto se sbagli anche solo un carattere rispetto al file sorgente, lo script di replace fallirà. Non indovinare. Copia bit-per-bit. Non usare mai `...` o commenti riassuntivi.
+        *   Dentro `<edit>`: Il nuovo codice che sostituirà ESATTAMENTE il blocco `<original>` (qui invece concentrati molto sulle giuste indentazioni).
+**Se violi queste regole (es. usi snippet su un file piccolo o sbagli l'original), il codice di produzione si romperà.**
+
+### FORMATO DELL'OUTPUT: XML
+1.  **STRUTTURA:** Usa il tag radice `<changes>`.
+    *   `<file path="path/to/file">` per file creati o riscritti interamente.
+    *   `<snippet path="path/to/file">` per modifiche mirate (Search & Replace).
+        *   Dentro snippet usa `<original>` (codice da cercare) e `<edit>` (codice da sostituire).
+    *   `<delete_file path="path/to/file" />` per file eliminati.
+    *   `<best_practice_append>` (OPZIONALE) Se noti un errore molto specifico, comune e che andrebbe prevenuto in progetti futuri, puoi proporre un'aggiunta al file system prompt delle best practices. Usalo con **ESTREMA PARSIMONIA** e solo se sei sicuro che sia un principio applicabile in generale, non un fix isolato. `</best_practice_append>`
+    *   `<shell>` (OPZIONALE) comandi da eseguire nel terminale (es. pnpm install e migrazioni db) per rendere funzionanti le nuove modifiche `</shell>`
+2.  **WRAPPER ESTERNO:** Restituisci l'intero output XML racchiuso in un unico blocco Markdown con **4 backticks** (````xml).
+3.  **CONTENUTO CODICE:**
+    *   Usa SEMPRE `<![CDATA[ ... ]]>` per il contenuto dei file.
+    *   All'interno dei CDATA, racchiudi il codice del file in un blocco Markdown standard con **3 backticks** (es: ```tsx o ```css).
+    *   **Indentazione:** Mantieni l'indentazione perfetta dentro i 3 backticks. NON minificare.
+4.  **SINTASSI:** Fai estrema attenzione all'escape dei caratteri speciali (es. apostrofi) nelle stringhe TSX. Usa template strings o entità HTML se necessario.
+
+**Esempio Esatto di Output XML:**
+
+````xml
+<changes>
+ <!-- Ripeti per ogni file aggiunto/modificato: -->
+  <file path="src/components/ExampleTemplate.tsx"><![CDATA[
+```tsx
+import { Button } from "@/components/ui/button"
+
+export interface ExampleProps {
+  title: string;
+}
+
+export default function ExampleTemplate({ title }: ExampleProps) {
+  return (
+    <div className="p-4">
+      <h1>{title}</h1>
+      <p>L&apos;arte del taglio</p> {/* Nota l'escape dell'apostrofo */}
+    </div>
+  )
+}
+// [CODICE COMPLETO PRESERVANDO ESATTAMENTE L'ORIGINALE CON MODIFICHE SOLO SULLA PARTE DA MODIFICARE]
+```
+  ]]></file>
+ <!-- Se devi cancellare file: -->
+  <delete_file path="src/app/old_file.ts" />
+ <!-- Se devi modificare solo dei piccoli snippet: -->
+    <snippet path="src/utils.ts">
+        <original><![CDATA[
+            ```
+                const x = 10;
+            ```
+        ]]></original>
+        <edit><![CDATA[
+            ```
+                const x = 20;
+            ```
+        ]]></edit>
+    </snippet>
+ <!-- Per proporre l'aggiunta di una regola globale (opzionale): -->
+    <best_practice_append><![CDATA[
+### 📦 Titolo Argomento
+* **Nome Regola:** Descrizione dell'errore comune che si vuole prevenire e soluzione corretta da adottare.
+]]></best_practice_append>
+ <!-- Per i comandi a shell da eseguire (opzionale): -->
+    <shell>
+        pnpm add -D new-library
+        pnpm drizzle-kit generate
+        echo "y" | pnpm wrangler d1 migrations apply nome-del-db --local
+    </shell>
+</changes>
+````
+</file>
+
+<file path="prompts/1_analysis.md">
+**Contesto:**
+Ho una app e voglio apportare alcune modifiche.
+
+**Input:**
+In allegato a questo messaggio trovi due file:
+1. `repomix-output.txt`: L'intero codebase del progetto.
+2. Questo file `PROMPT.md` con le istruzioni.
+
+**Task:**
+Ti chiederò di effettuare alcune modifiche al mio codebase. Per adesso farai un'analisi e aspetterei il mio feedback. In una seconda fase futura procederai con il coding.
+
+**PROCEDURA**
+{procedura_analisi}
+
+**BEST PRACTICE**
+* Best-practice: il lavoro dovrà essere eseguito secondo le best-practice per il framework in questione (ad esempio uso Image invece che img, valori di fallback, separazione logica/layout, ecc.).
+* Practice del mio repo: Eccezione alla regola precedente: adattati all'approccio che vedi utilizzato nel mio repo (se ad esempio il mio repo utilizza qualcosa che non è esattamente tra le best-practice, adattati comunque all'approccio del mio repo, previa approvazione mia, ricordati di richiedermi il feedback).
+* Dati dinamici: Se trovi collegamenti a CMS (es. Sanity), mantieni l'approccio, evita contenuti hardcoded (eccetto fallback).
+* initialValue: se aggiungi campi a Sanity, includi sempre un initialValue.
+* Installazione pacchetti Node.js: di default usa `pnpm`, NON usare `npm`. Usa npm solo se dall'analisi del mio codice ti accorgi che inequivocabilmente usato npm per quell'app.
+* Se vedi che ci sono database collegati ricordati di includermi i comandi per rendere funzionanti le nuove modifiche (es: generate e migrate).
+* Segui le altre best-practice incluse di seguito, servono a scongiurare e prevenire errori e perdite di tempo. Fai questi controlli in sordina, avvisami e proponimi soluzioni solo se noti delle evidenti criticità:
+
+**SYSTEM PROMPT - BEST PRACTICES**
+*(Le seguenti regole sono estratte dal file `prompts/best_practice.md`. Se durante il lavoro affronti e risolvi un problema molto comune o insidioso che andrebbe prevenuto globalmente in futuro, potrai proporre una regola aggiuntiva a questo file usando il tag `<best_practice_append>` in fase di esecuzione XML).*
+{best_practice}
+
+**MODIFICHE RICHIESTE:**
+{user_input}
+
+Ora procedi come ti ho indicato, aspetto le tue domande prima di darti istruzioni specifiche su come effettuare il coding vero e proprio.
+</file>
+
+<file path="prompts/2_execute.md">
+**MIO FEEDBACK:**
+{user_input}
+
+## Fase ESECUTIVA
+Ora sei entrato nella fase esecutiva, è MOLTO delicata, perché sei chiamato a modificare più file, perché è un'app in produzione, perché NON abbiamo a disposizione più tentativi, dev'essere one-shot e il tuo output verrà automaticamente convertito in modifiche al mio repo (i file verranno sovrascritti!).
+
+### Procedura
+* Analizza il mio feedback.
+* Rivedi la tua analisi del prompt precedente.
+* Pianifica le operazioni che dovrai eseguire, cura ogni dettaglio.
+* Scrivi questo piano in chiaro, prima di cominciare il lavoro di coding.
+* VINCOLO DI ESISTENZA DEI PATH: Prima di generare un <file> o uno <snippet>, devi obbligatoriamente verificare che il path esista esattamente come elencato nella sezione 'Directory Structure' o all'interno dei tag <file path="..."> del file repomix-output.txt fornito. Non inventare percorsi basandoti su convenzioni (es. non assumere /components/ui/ se il file è in /components/). Se un file non esiste nel contesto, non tentare di modificarlo.
+* Scrivi un piccolo riepilogo testuale con i file che dovrai modificare/aggiungere/eliminare [EDIT] / [NEW] / [DELETE]; per ognuno di questi, prima di scriverlo, verifica che il path e file esistano realmente, come suggerito al punto precedente.
+* Scrivi il nuovo codice per le pagine modificate o nuove, PER INTERO (salvo uso snippets), nel formato XML specificato sotto, **modifica solo quanto necessario** e **mantieni intatto il resto, compresi i commenti, LA FEDELTÀ ESTREMA È RICHIESTA E CRUCIALE**).
+* Dichiarazione Strategia: Nel tuo riepilogo testuale, per ogni file devi scrivere esplicitamente: "File: [nome], Righe stimate: [N], Strategia: [FULL REWRITE / SNIPPET]". Se scrivi "SNIPPET" per un file piccolo, l'operazione sarà considerata un errore.
+* Riportami dentro i tag <shell></shell> tutti i comandi a terminale (windows, integrato in VS Code) necessari per far funzionare le nuove modifiche (tralascia pnpm build o pnpm dev, quello è scontato e solitamente c'è l'ho costantemente attivo). Quando vedi che l'app si interfaccia con dei db dammi gli appositi comandi di generate e migrazione se le modifiche lo rendono necessario. Di default dammi i comandi per aggiornare il sistema in locale, perché di base lavorarerò più che altro in locale. Ad esempio se sto usando drizzle su un D1 all'interno del tag shell aggiungerai:
+   pnpm drizzle-kit generate
+   echo "y" | pnpm wrangler d1 migrations apply nome-del-db --local
+
+{formato_output}
+</file>
+
+<file path="rep.py">
 # NOTA PER LLM CODER: QUANDO MODIFICHI QUESTO FILE USANDO IL FORMATO OUTPUT CHE TI PERMETTE DI SCRIVERE IL FILE INTERO O GLI SNIPPET:
 # Assicurati che eventuali testi tipo il tag "< changes >" (scritto appositamente qui con gli spazi in più) siano soggetti a giusti escape, e in generale
 # che l'XML che mi dai in output non sia rotto
@@ -1233,3 +1769,6 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         # Cattura CTRL+C globale (utile nei menu input standard)
         cleanup_and_exit()
+</file>
+
+</files>

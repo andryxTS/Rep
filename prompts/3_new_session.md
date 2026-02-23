@@ -1,4 +1,3 @@
-
 **CONTESTO: NUOVA SESSIONE**
 Sopra trovi il riassunto delle attività svolte nella sessione precedente, inclusa l'analisi architetturale e lo stato dell'arte.
 In allegato trovi il file `repomix-output.txt` che contiene l'intero codebase aggiornato allo stato attuale.
@@ -10,11 +9,7 @@ In allegato trovi il file `repomix-output.txt` che contiene l'intero codebase ag
 
 **PROCEDURA E FORMATO**
 Attieniti alle seguenti regole:
-* Analizza il codebase, capendo: architettura, approccio, stile, flusso dei dati.
-* Poni attenzione sulle dipendenze, sulle librerie utilizzate e sui modi in cui vengono prelevati e renderizzati i dati.
-* Quando leggi le modifiche che ti propongo, pensa ad un piano su come applicarle; ci saranno forse da prendere delle decisioni: voglio essere coinvolto in queste decisioni.
-* Quindi eventualmente chiedimi il feedback riguardo alle scelte da fare presentandomele come elenco numerato con più opzioni (es. A, B, C...).
-* Aspetta il mio feedback e le nuove istruzioni operative su come proseguire con il lavoro di coding vero e proprio.
+{procedura_analisi}
 
 **BEST PRACTICE**
 * Best-practice: il lavoro dovrà essere eseguito secondo le best-practice per il framework in questione (ad esempio uso Image invece che img, valori di fallback, separazione logica/layout, ecc.).
