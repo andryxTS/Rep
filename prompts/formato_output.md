@@ -48,16 +48,16 @@ Massima attenzione, perché il tuo output verrà elaborato automaticamente da un
 **SCELTA DEL FORMATO: FULL REWRITE vs SNIPPET**
 Devi scegliere il formato in base a regole rigide. Non ottimizzare per la lunghezza del tuo output, ottimizza per la sicurezza dell'esecuzione.
 1.  **Formato `<file>` (FULL REWRITE):**
-    *   **OBBLIGATORIO** se il file ha meno di 150 righe.
+    *   **OBBLIGATORIO** se il file ha meno di 50 righe.
     *   **OBBLIGATORIO** se devi modificare più del 30% del file.
     *   **OBBLIGATORIO** se devi riscrivere intere funzioni o blocchi di codice lunghi (> 25 righe).
+    *   In generale: se l'output che ne risulterebbe scrivendo le patch con gli snippet (considerando che devi mettere sia il testo originale che quello modificato), risulterebbe più lungo rispetto a riscrivere il file intero.
     *   *Istruzione:* Riscrivi l'intero file da cima a fondo (SII ESTREMAMENTE FEDELE AL FILE ORIGINALE bit-per-bit tranne ovviamente per le righe da modificare).
 2.  **Formato `<snippet>` (SEARCH & REPLACE):**
-    *   **PERMESSO SOLO** se il file è grande (> 150 righe) e la modifica è chirurgica (es. cambiare da 1 a 25 righe di codice).
+    *   Da preferire rispetto a Full rewrite, a meno che scrivere in questa modalità comporti un testo più lungo rispetto a scrivere in Full rewrite.
     *   *Istruzione:*
         *   Dentro `<original>`: Devi copiare una porzione di codice UNICA ed ESISTENTE. **AVVISO CRITICO:** Mentre le indentazioni sono ignorate, per tutto il resto se sbagli anche solo un carattere rispetto al file sorgente, lo script di replace fallirà. Non indovinare. Copia bit-per-bit. Non usare mai `...` o commenti riassuntivi.
         *   Dentro `<edit>`: Il nuovo codice che sostituirà ESATTAMENTE il blocco `<original>` (qui invece concentrati molto sulle giuste indentazioni).
-**Se violi queste regole (es. usi snippet su un file piccolo o sbagli l'original), il codice di produzione si romperà.**
 
 ### FORMATO DELL'OUTPUT: XML
 1.  **STRUTTURA:** Usa il tag radice `<changes>`.
