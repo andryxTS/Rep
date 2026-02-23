@@ -495,62 +495,72 @@ def apply_snippet_fuzzy(file_path, original_block, edit_block):
 # --- HELPER PER GESTIONE IGNORE ---
 
 def load_ignore_patterns():
-    """Carica i pattern da GLOBAL_IGNORE_FILE e REPOMIX_IGNORE locale."""
-    patterns = set() # Set per evitare duplicati
+    """Carica i pattern dai file ignore, separando ignores e unignores (es. !prompts/)."""
+    ignores = set()
+    unignores = set()
     
-    # 1. Pattern di sistema hardcoded (sempre ignorati)
-    patterns.add(".rep_temp")
-    patterns.add(".git")
-    patterns.add(STATE_FILE) # Ignoriamo il file di stato stesso
+    # Pattern di sistema hardcoded (sempre ignorati)
+    ignores.add(".rep_temp")
+    ignores.add(".git")
+    ignores.add(STATE_FILE)
     
     files_to_read = []
     
-    # Aggiunge file globale se esiste
-    if os.path.exists(GLOBAL_IGNORE_FILE):
-        files_to_read.append(GLOBAL_IGNORE_FILE)
-        
-    # Aggiunge file locale se esiste
-    if os.path.exists(REPOMIX_IGNORE):
-        files_to_read.append(REPOMIX_IGNORE)
+    # 1. Legge .gitignore per massimizzare la compatibilità (Repomix lo fa di default)
+    if os.path.exists(".gitignore"): files_to_read.append(".gitignore")
+    # 2. Legge il file globale
+    if os.path.exists(GLOBAL_IGNORE_FILE): files_to_read.append(GLOBAL_IGNORE_FILE)
+    # 3. Legge il file locale
+    if os.path.exists(REPOMIX_IGNORE): files_to_read.append(REPOMIX_IGNORE)
         
     for file_path in files_to_read:
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 for line in f:
                     line = line.strip()
-                    # Ignora righe vuote e commenti
                     if line and not line.startswith('#'):
-                        patterns.add(line)
+                        if line.startswith('!'):
+                            unignores.add(line[1:])
+                        else:
+                            ignores.add(line)
         except Exception as e:
             print_warn(f"Impossibile leggere ignore file {file_path}: {e}")
             
-    return list(patterns)
+    return list(ignores), list(unignores)
 
-def is_ignored(path, patterns):
-    """Controlla se un path deve essere ignorato basandosi sui pattern."""
-    # Normalizza path (rimuove ./ iniziale e uniforma separatori)
+def match_pattern(path, name, pattern):
+    """Helper che adatta un pattern stile glob/gitignore per fnmatch OS-aware"""
+    p = pattern.rstrip('/')
+    # Rimuove wildcard finali per far matchare l'intera cartella (es. node_modules/** -> node_modules)
+    if p.endswith('/**'): p = p[:-3]
+    elif p.endswith('/*'): p = p[:-2]
+    
+    # Adatta i path per Windows se necessario
+    p = p.replace('/', os.sep)
+    
+    if fnmatch.fnmatch(name, p): return True
+    if fnmatch.fnmatch(path, p): return True
+    if path.startswith(p + os.sep): return True
+    if path == p: return True
+    
+    return False
+
+def is_ignored(path, ignores, unignores):
+    """Controlla se un path deve essere ignorato, dando precedenza alle eccezioni (!)."""
     path = os.path.normpath(path)
     if path.startswith("." + os.sep):
         path = path[2:]
     
     name = os.path.basename(path)
     
-    for pattern in patterns:
-        # Rimuove slash finali dai pattern (es. "dist/")
-        clean_pattern = pattern.rstrip("/")
-        clean_pattern = clean_pattern.rstrip(os.sep)
-        
-        # 1. Match sul nome esatto o wildcard (es. "node_modules", "*.pyc")
-        if fnmatch.fnmatch(name, clean_pattern):
-            return True
-            
-        # 2. Match sul percorso completo relativo (es. "src/temp/*")
-        if fnmatch.fnmatch(path, clean_pattern):
-            return True
-        
-        # 3. Match se il pattern è una directory genitore del path attuale
-        # Es: pattern="dist", path="dist/css/style.css" -> deve ignorare
-        if path.startswith(clean_pattern + os.sep):
+    # Prima controlla le eccezioni (!pattern) che invalidano l'ignore
+    for pattern in unignores:
+        if match_pattern(path, name, pattern):
+            return False
+
+    # Poi controlla le esclusioni
+    for pattern in ignores:
+        if match_pattern(path, name, pattern):
             return True
 
     return False
@@ -559,23 +569,23 @@ def is_ignored(path, patterns):
 
 def get_file_hashes():
     hashes = {}
-    patterns = load_ignore_patterns()
+    ignores, unignores = load_ignore_patterns()
     
     for root, dirs, files in os.walk("."):
         # OTTIMIZZAZIONE: Modifica 'dirs' in-place per impedire a os.walk 
         # di scendere nelle cartelle ignorate (es. node_modules).
         # Questo velocizza enormemente lo script.
-        dirs[:] = [d for d in dirs if not is_ignored(os.path.join(root, d), patterns)]
+        dirs[:] = [d for d in dirs if not is_ignored(os.path.join(root, d), ignores, unignores)]
         
         # Controllo se la root corrente è ignorata (doppio check)
-        if is_ignored(root, patterns):
+        if is_ignored(root, ignores, unignores):
             continue
 
         for file in files:
             file_path = os.path.join(root, file)
             
             # Se il file non è ignorato, calcola l'hash
-            if not is_ignored(file_path, patterns):
+            if not is_ignored(file_path, ignores, unignores):
                 try:
                     with open(file_path, "rb") as f: 
                         hashes[file_path] = hashlib.md5(f.read()).hexdigest()
@@ -844,7 +854,7 @@ def cmd_check():
     
     filtered_errors = []
     missing_modules_count = 0
-    patterns = load_ignore_patterns()
+    ignores, unignores = load_ignore_patterns()
     
     # Regex per catturare "path/to/file.ts(10,20): error TSxxxx: ..."
     error_pattern = re.compile(r'^([^\s(].+?)\(\d+,\d+\):\s+error\s+(TS\d+):(.+)')
@@ -857,7 +867,7 @@ def cmd_check():
             file_path = match.group(1)
             
             # A. FILTRO IGNORE
-            if is_ignored(file_path, patterns):
+            if is_ignored(file_path, ignores, unignores):
                 continue
             
             # B. RIMOSSO IL FILTRO RUMORE - Vogliamo vedere tutti gli errori veri!
