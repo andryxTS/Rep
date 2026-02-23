@@ -23,6 +23,10 @@ Ti chiederò di effettuare alcune modifiche al mio codebase. Per adesso farai un
 * initialValue: se aggiungi campi a Sanity, includi sempre un initialValue.
 * Installazione pacchetti Node.js: di default usa `pnpm`, NON usare `npm`. Usa npm solo se dall'analisi del mio codice ti accorgi che inequivocabilmente usato npm per quell'app.
 * Se vedi che ci sono database collegati ricordati di includermi i comandi per rendere funzionanti le nuove modifiche (es: generate e migrate).
+* Segui le altre best-practice incluse di seguito, servono a scongiurare e prevenire errori e perdite di tempo. Fai questi controlli in sordina, avvisami e proponimi soluzioni solo se noti delle evidenti criticità:
+
+**SYSTEM PROMPT - BEST PRACTICES**
+{best_practice}
 
 **MODIFICHE RICHIESTE:**
 {user_input}

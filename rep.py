@@ -1,4 +1,6 @@
-#!/usr/bin/env python3
+# NOTA PER LLM CODER: QUANDO MODIFICHI QUESTO FILE USANDO IL FORMATO OUTPUT CHE TI PERMETTE DI SCRIVERE IL FILE INTERO O GLI SNIPPET:
+# Assicurati che eventuali testi tipo il tag "< changes >" (scritto appositamente qui con gli spazi in più) siano soggetti a giusti escape, e in generale
+# che l'XML che mi dai in output non sia rotto
 import os
 import sys
 import subprocess
@@ -33,7 +35,6 @@ TEMP_DIR = ".rep_temp"  # Nuova cartella temporanea
 REPOMIX_OUTPUT_FILENAME = "repomix-output.txt"
 PROMPT_FILENAME = "PROMPT.md"
 
-# PROMPTS_DIR = os.path.expanduser("~/.rep_prompts")  // SOSTITUITO, COSÌ GIT MI TRACCIA I PROMPT
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROMPTS_DIR = os.path.join(BASE_DIR, "prompts")
 PROMPT_CREA_REPOMIXIGNORE = os.path.join(PROMPTS_DIR, "0_crea_repomixignore.md")
@@ -41,225 +42,14 @@ PROMPT_ANALYSIS_FILE = os.path.join(PROMPTS_DIR, "1_analysis.md")
 PROMPT_EXECUTE_FILE = os.path.join(PROMPTS_DIR, "2_execute.md")
 PROMPT_NEW_SESSION_FILE = os.path.join(PROMPTS_DIR, "3_new_session.md") 
 PROMPT_FORMATO_OUTPUT = os.path.join(PROMPTS_DIR, "formato_output.md") 
+PROMPT_BEST_PRACTICE_FILE = os.path.join(PROMPTS_DIR, "best_practice.md")
+PROMPT_PROCEDURA_SCRITTURA_FILE = os.path.join(PROMPTS_DIR, "procedura_scrittura.md")
 GLOBAL_IGNORE_FILE = os.path.join(PROMPTS_DIR, ".repomixignore")
-
-# --- PROMPT DEFAULT (Aggiornati per gestione allegati) ---
-DEFAULT_ANALYSIS_PROMPT = """
-**MODIFICHE RICHIESTE:**
-{user_input}
-
-**Input:**
-In allegato a questo messaggio trovi due file:
-1. `repomix-output.txt`: L'intero codebase del progetto.
-2. Questo file `PROMPT.md` con le istruzioni.
-
-**Task:**
-Ti chiederò di effettuare alcune modifiche al mio codebase. Per adesso farai un'analisi e aspetterei il mio feedback. In una seconda fase futura procederai con il coding.
-
-**PROCEDURA**
-* Analizza il codebase, capendo: architettura, approccio, stile, flusso dei dati.
-* Leggi le modifiche che ti propongo, pensa ad un piano su come applicarle; ci saranno probabilmente da prendere delle decisioni: voglio essere coinvolto in queste decisioni.
-* Chiedimi il feedback riguardo alle scelte da fare presentandomele come elenco numerato con più opzioni (es. A, B, C...).
-* Aspetta il mio feedback e le nuove istruzioni operative su come proseguire con il lavoro di coding vero e proprio.
-
-**BEST PRACTICE**
-* Best-practice: il lavoro dovrà essere eseguito secondo le best-practice per il framework in questione.
-* Practice del mio repo: Adattati all'approccio che vedi utilizzato nel mio repo anche se non standard, previa mia approvazione.
-* Dati dinamici: Evita contenuti hardcoded per dati da CMS.
-* initialValue: se aggiungi campi a Sanity, includi sempre un initialValue.
-"""
-
-DEFAULT_EXECUTE_PROMPT = """
-**MIO FEEDBACK:**
-{user_input}
-
-### Fase ESECUTIVA
-Ora sei entrato nella fase esecutiva. Modifica i file necessari.
-
-**Procedura**
-* Analizza il mio feedback.
-* Rivedi la tua analisi.
-* Pianifica le operazioni che dovrai eseguire, cura ogni dettaglio.
-* Scrivi questo piano in chiaro, prima di cominciare il lavoro di coding.
-* VINCOLO DI ESISTENZA DEI PATH: Prima di generare un <file> o uno <snippet>, devi obbligatoriamente verificare che il path esista esattamente come elencato nella sezione 'Directory Structure' o all'interno dei tag <file path="..."> del file repomix-output.txt fornito. Non inventare percorsi basandoti su convenzioni (es. non assumere /components/ui/ se il file è in /components/). Se un file non esiste nel contesto, non tentare di modificarlo.
-* Scrivi un piccolo riepilogo testuale con i file che dovrai modificare/aggiungere/eliminare [EDIT] / [NEW] / [DELETE]; per ognuno di questi, prima di scriverlo, verifica che il path e file esistano realmente, come suggerito al punto precedente.
-* Scrivi il nuovo codice per le pagine modificate o nuove, PER INTERO (salvo uso snippets), nel formato XML specificato sotto, **modifica solo quanto necessario** e **mantieni intatto il resto, compresi i commenti, LA FEDELTÀ ESTREMA È RICHIESTA E CRUCIALE**).
-* Dichiarazione Strategia: Nel tuo riepilogo testuale, per ogni file devi scrivere esplicitamente: "File: [nome], Righe stimate: [N], Strategia: [FULL REWRITE / SNIPPET]". Se scrivi "SNIPPET" per un file piccolo, l'operazione sarà considerata un errore.
-
-{formato_output}
-"""
-
-DEFAULT_NEW_SESSION_PROMPT = """
-**CONTESTO: NUOVA SESSIONE**
-Sopra trovi il riassunto delle attività svolte nella sessione precedente, inclusa l'analisi architetturale e lo stato dell'arte.
-In allegato trovi il file `repomix-output.txt` che contiene l'intero codebase aggiornato allo stato attuale.
-
-**TASK**
-1. Leggi il riassunto per allinearti sul contesto.
-2. Analizza il codebase allegato per confermare i dettagli tecnici.
-3. Attendi indicazioni su come proseguire il lavoro di modifica/debug.
-
-**PROCEDURA E FORMATO**
-Attieniti alle seguenti regole:
-* Analizza il codebase, capendo: architettura, approccio, stile, flusso dei dati.
-* Poni attenzione sulle dipendenze, sulle librerie utilizzate e sui modi in cui vengono prelevati e renderizzati i dati.
-* Quando leggi le modifiche che ti propongo, pensa ad un piano su come applicarle; ci saranno forse da prendere delle decisioni: voglio essere coinvolto in queste decisioni.
-* Quindi eventualmente chiedimi il feedback riguardo alle scelte da fare presentandomele come elenco numerato con più opzioni (es. A, B, C...).
-* Aspetta il mio feedback e le nuove istruzioni operative su come proseguire con il lavoro di coding vero e proprio.
-
-**BEST PRACTICE**
-* Best-practice: il lavoro dovrà essere eseguito secondo le best-practice per il framework in questione (ad esempio uso Image invece che img, valori di fallback, separazione logica/layout, ecc.).
-* Practice del mio repo: Eccezione alla regola precedente: adattati all'approccio che vedi utilizzato nel mio repo (se ad esempio il mio repo utilizza qualcosa che non è esattamente tra le best-practice, adattati comunque all'approccio del mio repo, previa approvazione mia, ricordati di richiedermi il feedback).
-* Dati dinamici: Se trovi collegamenti a CMS (es. Sanity), mantieni l'approccio, evita contenuti hardcoded (eccetto fallback).
-* initialValue: se aggiungi campi a Sanity, includi sempre un initialValue.
-
-## Fase ESECUTIVA
-Quando entri nella fase esecutiva, di coding, ricordati che è MOLTO delicata, perché sei chiamato a modificare più file, perché è un'app in produzione, perché NON abbiamo a disposizione più tentativi, dev'essere one-shot e il tuo output verrà automaticamente convertito in modifiche al mio repo (i file verranno sovrascritti!).
-Quindi quando entrerai in questa fase seguirai queste indicazioni:
-
-### Procedura
-* Analizza il mio feedback.
-* Rivedi la tua analisi fatta in precedenza.
-* Pianifica le operazioni che dovrai eseguire, cura ogni dettaglio.
-* Scrivi questo piano in chiaro, prima di cominciare il lavoro di coding.
-* VINCOLO DI ESISTENZA DEI PATH: Prima di generare un <file> o uno <snippet>, devi obbligatoriamente verificare che il path esista esattamente come elencato nella sezione 'Directory Structure' o all'interno dei tag <file path="..."> del file repomix-output.txt fornito. Non inventare percorsi basandoti su convenzioni (es. non assumere /components/ui/ se il file è in /components/). Se un file non esiste nel contesto, non tentare di modificarlo.
-* Scrivi un piccolo riepilogo testuale con i file che dovrai modificare/aggiungere/eliminare [EDIT] / [NEW] / [DELETE]; per ognuno di questi, prima di scriverlo, verifica che il path e file esistano realmente, come suggerito al punto precedente.
-* Scrivi il nuovo codice per le pagine modificate o nuove, PER INTERO (salvo uso snippets), nel formato XML specificato sotto, **modifica solo quanto necessario** e **mantieni intatto il resto, compresi i commenti, LA FEDELTÀ ESTREMA È RICHIESTA E CRUCIALE**).
-* Dichiarazione Strategia: Nel tuo riepilogo testuale, per ogni file devi scrivere esplicitamente: "File: [nome], Righe stimate: [N], Strategia: [FULL REWRITE / SNIPPET]". Se scrivi "SNIPPET" per un file piccolo, l'operazione sarà considerata un errore.
-
-{formato_output}
-"""
-
-DEFAULT_FORMATO_OUTPUT = """
-### Formato Snippets (per piccole modifiche)
-Quando scegli per alcuni file il formato snippets, per le piccole modifiche, devi includere:
-1. in modo ASSOLUTAMENTE FEDELE (cruciale!) lo snippet di codice originale da sostituire, lo racchiuderai contornato tra 3 backtick dentro il tag <original>, 
-2. lo snippet nuovo che andrà a sostituire l'originale, racchiuso fra 3 backtick, dentro il tag <edit>
-Massima attenzione, perché il tuo output verrà elaborato automaticamente da uno script che cercherà nel file la stringa di testo indicata in <original> e la sostituirà con il testo contenuto in <edit>; ovviamente questa cosa funziona fintante che:
-* Ciò che è contenuto in <original> è assolutamente FEDELE al file originale che ti ho passato in contesto. ⚠️ VINCOLO DI FEDELTÀ ESTREMA: Quando compili il tag <original>, non ricostruire il codice a memoria e non riassumere. Devi eseguire una ricerca testuale nel codebase che ti ho inviato, individuare il blocco esatto di righe e copiarlo carattere per carattere, inclusi i commenti. Se il contenuto di <original> non è identico al 100% al file sorgente, l'intera operazione fallirà. Se hai dubbi sulla versione esatta, chiedi conferma invece di ipotizzare.
-* Ciò che è contenuto in <edit> è pensato per sostituire ciò che è contenuto in <original> garantendo il funzionamento del codice.
-*   Usa SEMPRE `<![CDATA[ ... ]]>` per il contenuto dei file.
-*   All'interno dei CDATA, racchiudi il codice del file in un blocco Markdown standard con **3 backticks** (es: ```tsx o ```css).
-*   **Indentazione:** Mantieni l'indentazione perfetta dentro i 3 backticks. NON minificare.
-
-**Esempio Snippet 1 (modifica righe):**
-<snippet path="src/utils.ts">
-    <original><![CDATA[
-        ```
-            const x = 10;
-        ```
-    ]]></original>
-    <edit><![CDATA[
-        ```
-            const x = 20;
-        ```
-    ]]></edit>
-</snippet>
-
-**Esempio Snippet 2 (aggiunta righe):**
-<snippet path="src/utils.ts">
-    <original><![CDATA[
-    ```
-        const x = 10;
-        const y = 5;
-    ```
-    ]]></original>
-    <edit><![CDATA[
-    ```
-        const x = 10;
-        const z = 15; // Riga aggiunta
-        const y = 5;
-    ```
-    ]]></edit>
-</snippet>
-
-**ATTENZIONE: IL TUO OUTPUT VERRÀ RIGETTATO SE:**
-* Il contenuto di <original> non matcha bit-per-bit il file sul disco (esclusi gli indent che vengono ignorati per il match).
-* Cerchi di "riassumere" il codice in <original> (es. usando ... o commenti tipo // resto del codice).
-* All'interno del blocco <original> cambi l'ordine di proprietà, dichiarazioni, espressioni. (se cambia l'ordine non ottengo più il match indispensabile per eseguire la patch)
-
-**SCELTA DEL FORMATO: FULL REWRITE vs SNIPPET**
-Devi scegliere il formato in base a regole rigide. Non ottimizzare per la lunghezza del tuo output, ottimizza per la sicurezza dell'esecuzione.
-1.  **Formato `<file>` (FULL REWRITE):**
-    *   **OBBLIGATORIO** se il file ha meno di 150 righe.
-    *   **OBBLIGATORIO** se devi modificare più del 30% del file.
-    *   **OBBLIGATORIO** se devi riscrivere intere funzioni o blocchi di codice lunghi (> 25 righe).
-    *   *Istruzione:* Riscrivi l'intero file da cima a fondo (SII ESTREMAMENTE FEDELE AL FILE ORIGINALE bit-per-bit tranne ovviamente per le righe da modificare).
-2.  **Formato `<snippet>` (SEARCH & REPLACE):**
-    *   **PERMESSO SOLO** se il file è grande (> 150 righe) e la modifica è chirurgica (es. cambiare da 1 a 25 righe di codice).
-    *   *Istruzione:*
-        *   Dentro `<original>`: Devi copiare una porzione di codice UNICA ed ESISTENTE. **AVVISO CRITICO:** Mentre le indentazioni sono ignorate, per tutto il resto se sbagli anche solo un carattere rispetto al file sorgente, lo script di replace fallirà. Non indovinare. Copia bit-per-bit. Non usare mai `...` o commenti riassuntivi.
-        *   Dentro `<edit>`: Il nuovo codice che sostituirà ESATTAMENTE il blocco `<original>` (qui invece concentrati molto sulle giuste indentazioni).
-**Se violi queste regole (es. usi snippet su un file piccolo o sbagli l'original), il codice di produzione si romperà.**
-
-### FORMATO DELL'OUTPUT: XML
-1.  **STRUTTURA:** Usa il tag radice `<changes>`.
-    *   `<file path="path/to/file">` per file creati o riscritti interamente.
-    *   `<snippet path="path/to/file">` per modifiche mirate (Search & Replace).
-        *   Dentro snippet usa `<original>` (codice da cercare) e `<edit>` (codice da sostituire).
-    *   `<delete_file path="path/to/file" />` per file eliminati.
-    *   `<shell>` comandi da eseguire nel terminale (es. pnpm install) `</shell>`
-2.  **WRAPPER ESTERNO:** Restituisci l'intero output XML racchiuso in un unico blocco Markdown con **4 backticks** (````xml).
-3.  **CONTENUTO CODICE:**
-    *   Usa SEMPRE `<![CDATA[ ... ]]>` per il contenuto dei file.
-    *   All'interno dei CDATA, racchiudi il codice del file in un blocco Markdown standard con **3 backticks** (es: ```tsx o ```css).
-    *   **Indentazione:** Mantieni l'indentazione perfetta dentro i 3 backticks. NON minificare.
-4.  **SINTASSI:** Fai estrema attenzione all'escape dei caratteri speciali (es. apostrofi) nelle stringhe TSX. Usa template strings o entità HTML se necessario.
-
-**Esempio Esatto di Output XML:**
-
-````xml
-<changes>
- <!-- Ripeti per ogni file aggiunto/modificato: -->
-  <file path="src/components/ExampleTemplate.tsx"><![CDATA[
-```tsx
-import { Button } from "@/components/ui/button"
-
-export interface ExampleProps {
-  title: string;
-}
-
-export default function ExampleTemplate({ title }: ExampleProps) {
-  return (
-    <div className="p-4">
-      <h1>{title}</h1>
-      <p>L&apos;arte del taglio</p> {/* Nota l'escape dell'apostrofo */}
-    </div>
-  )
-}
-// [CODICE COMPLETO PRESERVANDO ESATTAMENTE L'ORIGINALE CON MODIFICHE SOLO SULLA PARTE DA MODIFICARE]
-```
-  ]]></file>
- <!-- Se devi cancellare file: -->
-  <delete_file path="src/app/old_file.ts" />
- <!-- Se devi modificare solo dei piccoli snippet: -->
-    <snippet path="src/utils.ts">
-        <original><![CDATA[
-            ```
-                const x = 10;
-            ```
-        ]]></original>
-        <edit><![CDATA[
-            ```
-                const x = 20;
-            ```
-        ]]></edit>
-    </snippet>
- <!-- Per i comandi a shell da eseguire: -->
-    <shell>
-        ```bat
-            pnpm add -D new-library
-        ```
-    </shell>
-</changes>
-````
-"""
 
 # --- UTILS SISTEMA ---
 
 def cleanup_and_exit():
     """Pulisce i file temporanei ed esce dallo script."""
-    # Mettiamo il messaggio QUI. È l'unico punto sicuro che viene eseguito sempre.
     print(f"\n{Fore.RED}⛔ Operazione annullata.{Style.RESET_ALL}")
     
     if os.path.exists(TEMP_DIR):
@@ -323,22 +113,25 @@ def open_folder(path):
         subprocess.run(["xdg-open", path])
 
 def ensure_prompts_exist():
-    if not os.path.exists(PROMPTS_DIR): os.makedirs(PROMPTS_DIR)
+    if not os.path.exists(PROMPTS_DIR):
+        print_error(f"Errore: Cartella prompts mancante in {PROMPTS_DIR}.")
+        cleanup_and_exit()
+        
+    required_files = [
+        PROMPT_ANALYSIS_FILE, 
+        PROMPT_EXECUTE_FILE, 
+        PROMPT_NEW_SESSION_FILE, 
+        PROMPT_FORMATO_OUTPUT,
+        PROMPT_BEST_PRACTICE_FILE,
+        PROMPT_PROCEDURA_SCRITTURA_FILE
+    ]
     
-    # Sovrascrive Analysis se vecchio (per rimuovere placeholder {codebase})
-    # OCCHIO: Se hai modificato molto i tuoi prompt, controlla questo passaggio.
-    # Qui creo se non esistono.
-    if not os.path.exists(PROMPT_ANALYSIS_FILE):
-        with open(PROMPT_ANALYSIS_FILE, "w", encoding="utf-8") as f: f.write(DEFAULT_ANALYSIS_PROMPT)
-    
-    if not os.path.exists(PROMPT_EXECUTE_FILE):
-        with open(PROMPT_EXECUTE_FILE, "w", encoding="utf-8") as f: f.write(DEFAULT_EXECUTE_PROMPT)
-
-    if not os.path.exists(PROMPT_NEW_SESSION_FILE):
-        with open(PROMPT_NEW_SESSION_FILE, "w", encoding="utf-8") as f: f.write(DEFAULT_NEW_SESSION_PROMPT)
-
-    if not os.path.exists(PROMPT_FORMATO_OUTPUT):
-        with open(PROMPT_FORMATO_OUTPUT, "w", encoding="utf-8") as f: f.write(DEFAULT_FORMATO_OUTPUT)
+    missing = [f for f in required_files if not os.path.exists(f)]
+    if missing:
+        for m in missing:
+            print_error(f"Errore: File prompt mancante ({os.path.basename(m)}).")
+        print_error("Assicurati che la cartella prompts sia presente e contenga tutti i file necessari.")
+        cleanup_and_exit()
 
 def get_multiline_input(prompt_text, default_text=""):
     print(f"\n{Fore.YELLOW}{prompt_text}{Style.RESET_ALL}")
@@ -518,9 +311,11 @@ def cmd_init(auto_input=None):
         user_input = get_multiline_input("Descrivi l'obiettivo delle modifiche")
     
     with open(PROMPT_ANALYSIS_FILE, "r", encoding="utf-8") as f: template = f.read()
+    with open(PROMPT_BEST_PRACTICE_FILE, "r", encoding="utf-8") as f: best_practice_content = f.read()
     
-    # Gestione intelligente del placeholder {codebase}
+    # Gestione intelligente dei placeholder
     final_prompt = template.replace("{user_input}", user_input)
+    final_prompt = final_prompt.replace("{best_practice}", best_practice_content)
     if "{codebase}" in final_prompt:
         final_prompt = final_prompt.replace("{codebase}", "[VEDI FILE ALLEGATO: repomix-output.txt]")
     
@@ -552,18 +347,19 @@ def cmd_init(auto_input=None):
         shutil.rmtree(TEMP_DIR)
         print_step("Cartella temporanea pulita.")
     
-    # Legge il file con le regole di formattazione
-    formato_output_content = ""
-    if os.path.exists(PROMPT_FORMATO_OUTPUT):
-        with open(PROMPT_FORMATO_OUTPUT, "r", encoding="utf-8") as f: 
-            formato_output_content = f.read()
-    else:
-        print_warn(f"File {PROMPT_FORMATO_OUTPUT} non trovato, il placeholder rimarrà vuoto.")
+    # I file sono garantiti da ensure_prompts_exist()
+    with open(PROMPT_FORMATO_OUTPUT, "r", encoding="utf-8") as f: 
+        formato_output_content = f.read()
+        
+    with open(PROMPT_PROCEDURA_SCRITTURA_FILE, "r", encoding="utf-8") as f: 
+        procedura_scrittura_content = f.read()
 
     with open(PROMPT_EXECUTE_FILE, "r", encoding="utf-8") as f: template = f.read()
     
-    # Sostituisce sia l'input utente che il formato output
-    final_exec_prompt = template.replace("{user_input}", feedback_input).replace("{formato_output}", formato_output_content)
+    # Sostituisce l'input utente, il formato output e la procedura
+    final_exec_prompt = template.replace("{user_input}", feedback_input)
+    final_exec_prompt = final_exec_prompt.replace("{formato_output}", formato_output_content)
+    final_exec_prompt = final_exec_prompt.replace("{procedura_scrittura}", procedura_scrittura_content)
     
     pyperclip.copy(final_exec_prompt)
     save_state()
@@ -789,13 +585,16 @@ def cmd_apply():
     while True:
         print_step("Analisi Clipboard XML...")
         raw_content = pyperclip.paste()
-        match = re.search(r'<changes>(.*?)</changes>', raw_content, re.DOTALL)
+        
+        tag_open = "<" + "changes>"
+        tag_close = "</" + "changes>"
+        match = re.search(tag_open + r'(.*?)' + tag_close, raw_content, re.DOTALL)
         
         if not match: 
-            print_error("Nessun tag <changes> trovato.")
+            print_error(f"Nessun tag {tag_open} trovato.")
         else:
             try: 
-                root = ET.fromstring(f"<changes>{match.group(1)}</changes>")
+                root = ET.fromstring(f"{tag_open}{match.group(1)}{tag_close}")
                 
                 changes_count = 0
                 shell_commands = []
@@ -890,7 +689,6 @@ def cmd_apply():
                     elif choice == "3":
                         print_warn("Comandi ignorati.")
 
-                # NUOVO: Gestione fallimenti e generazione prompt di ripristino
                 # NUOVO: Gestione fallimenti e generazione prompt di ripristino
                 if failed_snippets:
                     print_error(f"\nAttenzione: {len(failed_snippets)} snippet non sono stati applicati.")
@@ -1304,22 +1102,23 @@ def cmd_new():
         print_error("Repomix fallito.")
         return
 
-    # Legge il template per la nuova sessione (creato/gestito dall'utente in prompts/3_new_session.md)
-    if not os.path.exists(PROMPT_NEW_SESSION_FILE):
-        print_error(f"File template mancante: {PROMPT_NEW_SESSION_FILE}")
-        return
+    # I file sono garantiti da ensure_prompts_exist()
+    with open(PROMPT_FORMATO_OUTPUT, "r", encoding="utf-8") as f: 
+        formato_output_content = f.read()
+
+    with open(PROMPT_BEST_PRACTICE_FILE, "r", encoding="utf-8") as f:
+        best_practice_content = f.read()
         
-    # Legge regole formattazione
-    formato_output_content = ""
-    if os.path.exists(PROMPT_FORMATO_OUTPUT):
-        with open(PROMPT_FORMATO_OUTPUT, "r", encoding="utf-8") as f: 
-            formato_output_content = f.read()
+    with open(PROMPT_PROCEDURA_SCRITTURA_FILE, "r", encoding="utf-8") as f:
+        procedura_scrittura_content = f.read()
 
     with open(PROMPT_NEW_SESSION_FILE, "r", encoding="utf-8") as f:
         new_session_template = f.read()
     
-    # Sostituisce il placeholder nel template
+    # Sostituisce i placeholder nel template
     new_session_template = new_session_template.replace("{formato_output}", formato_output_content)
+    new_session_template = new_session_template.replace("{best_practice}", best_practice_content)
+    new_session_template = new_session_template.replace("{procedura_scrittura}", procedura_scrittura_content)
 
     # Combina: Intestazione + Riassunto Vecchio + Istruzioni Nuovo
     final_prompt_content = (
