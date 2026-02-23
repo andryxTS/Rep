@@ -1,6 +1,7 @@
 # --- Output & Dependencies ---
 node_modules/
 .next/
+.open-next/
 out/
 build/
 dist/

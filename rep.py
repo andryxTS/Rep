@@ -503,6 +503,9 @@ def load_ignore_patterns():
     ignores.add(".rep_temp")
     ignores.add(".git")
     ignores.add(STATE_FILE)
+    ignores.add(".open-next")
+    ignores.add(".next")
+    ignores.add("node_modules")
     
     files_to_read = []
     
@@ -535,14 +538,27 @@ def match_pattern(path, name, pattern):
     if p.endswith('/**'): p = p[:-3]
     elif p.endswith('/*'): p = p[:-2]
     
+    # Gestione del leading slash (es. /.next indica la cartella solo in root)
+    is_root = False
+    if p.startswith('/'):
+        is_root = True
+        p = p[1:]
+    
     # Adatta i path per Windows se necessario
     p = p.replace('/', os.sep)
     
-    if fnmatch.fnmatch(name, p): return True
-    if fnmatch.fnmatch(path, p): return True
-    if path.startswith(p + os.sep): return True
-    if path == p: return True
-    
+    if is_root:
+        if path == p: return True
+        if path.startswith(p + os.sep): return True
+        if fnmatch.fnmatch(path, p): return True
+    else:
+        if fnmatch.fnmatch(name, p): return True
+        if fnmatch.fnmatch(path, p): return True
+        if path == p: return True
+        if path.startswith(p + os.sep): return True
+        if (os.sep + p + os.sep) in path: return True
+        if path.endswith(os.sep + p): return True
+        
     return False
 
 def is_ignored(path, ignores, unignores):
@@ -770,11 +786,14 @@ def cmd_mod(auto_input=None):
         req = auto_input
         print_step("Input acquisito automaticamente dal report errori.")
     else:
-        req = get_multiline_input("Richiesta:")
+        req = get_multiline_input("Richiesta (OPZIONALE, altrimenti lascia vuoto per ottenere solo l'aggiornamento file modificati):")
 
     xml = "<modified_files>\n" + "".join([f' <file path="{p}"><![CDATA[\n{open(p,"r",encoding="utf-8").read()}\n]]></file>\n' for p in modified]) + "</modified_files>"
     
-    pyperclip.copy(f"{req}\n\n[ATTENZIONE, avviso automatico di sistema: dall'ultimo aggiornamento sono stati modificati alcuni file, che verranno riportati qui sotto e verranno considerati la nuova versione di riferimento:]\n```{xml}```")
+    if req:
+        pyperclip.copy(f"{req}\n\n[ATTENZIONE, avviso automatico di sistema: dall'ultimo aggiornamento sono stati modificati alcuni file, che verranno riportati qui sotto e verranno considerati la nuova versione di riferimento:]\n```{xml}```")
+    else:
+        pyperclip.copy(f"[ATTENZIONE, avviso automatico di sistema: dall'ultimo aggiornamento sono stati modificati alcuni file, che verranno riportati qui sotto e verranno considerati la nuova versione di riferimento:]\n```{xml}```")
     print_success("Prompt con file modificati copiato negli appunti.")
     save_state()
     return True
