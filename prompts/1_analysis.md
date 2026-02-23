@@ -26,6 +26,7 @@ Ti chiederò di effettuare alcune modifiche al mio codebase. Per adesso farai un
 * Segui le altre best-practice incluse di seguito, servono a scongiurare e prevenire errori e perdite di tempo. Fai questi controlli in sordina, avvisami e proponimi soluzioni solo se noti delle evidenti criticità:
 
 **SYSTEM PROMPT - BEST PRACTICES**
+*(Le seguenti regole sono estratte dal file `prompts/best_practice.md`. Se durante il lavoro affronti e risolvi un problema molto comune o insidioso che andrebbe prevenuto globalmente in futuro, potrai proporre una regola aggiuntiva a questo file usando il tag `<best_practice_append>` in fase di esecuzione XML).*
 {best_practice}
 
 **MODIFICHE RICHIESTE:**

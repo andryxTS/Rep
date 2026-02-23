@@ -44,7 +44,7 @@ PROMPT_NEW_SESSION_FILE = os.path.join(PROMPTS_DIR, "3_new_session.md")
 PROMPT_FORMATO_OUTPUT = os.path.join(PROMPTS_DIR, "formato_output.md") 
 PROMPT_BEST_PRACTICE_FILE = os.path.join(PROMPTS_DIR, "best_practice.md")
 PROMPT_PROCEDURA_SCRITTURA_FILE = os.path.join(PROMPTS_DIR, "procedura_scrittura.md")
-GLOBAL_IGNORE_FILE = os.path.join(PROMPTS_DIR, ".repomixignore")
+GLOBAL_IGNORE_FILE = os.path.join(PROMPTS_DIR, ".repomixignore.template")
 
 # --- UTILS SISTEMA ---
 
@@ -634,6 +634,20 @@ def cmd_apply():
                         print_warn(f"[DEL] Eliminato: {path}")
                         changes_count += 1
                         
+                # --- NUOVO: Gestione best_practice_append ---
+                for bp_node in root.findall('best_practice_append'):
+                    bp_text = clean_code_content(bp_node.text)
+                    if bp_text:
+                        print(f"\n{Fore.YELLOW}L'AI propone di aggiungere questa nuova Best Practice al sistema:{Style.RESET_ALL}")
+                        print(f"{Fore.CYAN}{bp_text}{Style.RESET_ALL}")
+                        choice = smart_input(f"Vuoi aggiungerla a best_practice.md? (y/N): ").strip().lower()
+                        if choice == 'y':
+                            with open(PROMPT_BEST_PRACTICE_FILE, "a", encoding="utf-8") as f:
+                                f.write(f"\n\n{bp_text}")
+                            print_success("Best practice aggiunta con successo al file.")
+                        else:
+                            print_warn("Aggiunta best practice ignorata.")
+
                 shell_commands = [] # Reset lista comandi
                 shell_node = root.find('shell')
                 if shell_node is not None:

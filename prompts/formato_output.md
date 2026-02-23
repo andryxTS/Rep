@@ -65,7 +65,8 @@ Devi scegliere il formato in base a regole rigide. Non ottimizzare per la lunghe
     *   `<snippet path="path/to/file">` per modifiche mirate (Search & Replace).
         *   Dentro snippet usa `<original>` (codice da cercare) e `<edit>` (codice da sostituire).
     *   `<delete_file path="path/to/file" />` per file eliminati.
-    *   `<shell>` comandi da eseguire nel terminale (es. pnpm install e migrazioni db) per rendere funzionanti le nuove modifiche (ma se non ce ne sono ometti del tutto questo tag) `</shell>`
+    *   `<best_practice_append>` (OPZIONALE) Se noti un errore molto specifico, comune e che andrebbe prevenuto in progetti futuri, puoi proporre un'aggiunta al file system prompt delle best practices. Usalo con **ESTREMA PARSIMONIA** e solo se sei sicuro che sia un principio applicabile in generale, non un fix isolato. `</best_practice_append>`
+    *   `<shell>` (OPZIONALE) comandi da eseguire nel terminale (es. pnpm install e migrazioni db) per rendere funzionanti le nuove modifiche `</shell>`
 2.  **WRAPPER ESTERNO:** Restituisci l'intero output XML racchiuso in un unico blocco Markdown con **4 backticks** (````xml).
 3.  **CONTENUTO CODICE:**
     *   Usa SEMPRE `<![CDATA[ ... ]]>` per il contenuto dei file.
@@ -112,7 +113,12 @@ export default function ExampleTemplate({ title }: ExampleProps) {
             ```
         ]]></edit>
     </snippet>
- <!-- Per i comandi a shell da eseguire (se ce ne sono, altrimenti ometti): -->
+ <!-- Per proporre l'aggiunta di una regola globale (opzionale): -->
+    <best_practice_append><![CDATA[
+### 📦 Titolo Argomento
+* **Nome Regola:** Descrizione dell'errore comune che si vuole prevenire e soluzione corretta da adottare.
+]]></best_practice_append>
+ <!-- Per i comandi a shell da eseguire (opzionale): -->
     <shell>
         pnpm add -D new-library
         pnpm drizzle-kit generate
