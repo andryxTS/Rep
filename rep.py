@@ -993,13 +993,11 @@ def cmd_check():
             print("Per favore installa TypeScript o le dipendenze del progetto.")
             return
 
-    # --- 4. ESECUZIONE ANALISI ---
+# --- 4. ESECUZIONE ANALISI ---
     print_step("Analisi TypeScript in corso...")
 
-    # --noEmit: solo check
-    # --skipLibCheck: ignora errori dentro le librerie (fondamentale)
-    # --pretty false: formato facile da leggere per python
-    cmd = f'"{tsc_path}" --noEmit --skipLibCheck --incremental --pretty false'
+    # Rimosso --incremental (che creava cache buggate) e mantenuto l'essenziale
+    cmd = f'"{tsc_path}" --noEmit --skipLibCheck --pretty false'
 
     try:
         # Timeout 60s
@@ -1029,17 +1027,12 @@ def cmd_check():
         
         if match:
             file_path = match.group(1)
-            error_code = match.group(2)
             
             # A. FILTRO IGNORE
             if is_ignored(file_path, patterns):
                 continue
             
-            # B. FILTRO RUMORE
-            if error_code in ["TS2307", "TS7026", "TS2580"]:
-                missing_modules_count += 1
-                continue 
-
+            # B. RIMOSSO IL FILTRO RUMORE - Vogliamo vedere tutti gli errori veri!
             filtered_errors.append(line)
 
     # REPORT FINALE
