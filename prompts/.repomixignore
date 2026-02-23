@@ -29,7 +29,7 @@ repomix-output.xml
 Thumbs.db
 .env
 .git/
-.github/
+!.github/workflows/
 .vscode/
 .gitignore
 .repomixignore
