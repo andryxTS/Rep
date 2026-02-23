@@ -344,7 +344,7 @@ def cmd_init(auto_input=None):
     feedback_input = get_multiline_input(msg).strip()
     
     if not feedback_input:
-        feedback_input = "Fai tu in autonomia le scelte che ritieni più opportune, mi fido."
+        feedback_input = "OK, fai tu in autonomia le scelte che ritieni più opportune."
 
     # 6. Pulizia Temp e Step 2
     if os.path.exists(TEMP_DIR): 
@@ -710,10 +710,22 @@ def cmd_apply():
                 # NUOVO: Gestione fallimenti e generazione prompt di ripristino
                 if failed_snippets:
                     print_error(f"\nAttenzione: {len(failed_snippets)} snippet non sono stati applicati.")
-                    # Formatta la lista dei file per il prompt
-                    file_list_str = "\n".join([f"- {f}" for f in failed_snippets])
-                    recovery_prompt = f"""Le seguenti patch in modalità Snippet non hanno funzionato (match non perfetto con l'originale), perciò ti chiedo per questi file di riscrivermi l'output, questa volta usando la modalità FULL REWRITE; attenzione doppia alla fedeltà con i file originali: 
-                        {file_list_str}"""
+                    
+                    # Deduplica mantenendo l'ordine (evita ripetizioni se falliscono più snippet sullo stesso file)
+                    unique_fails = list(dict.fromkeys(failed_snippets))
+                    file_list_str = "\n".join([f"- {f}" for f in unique_fails])
+                    
+                    recovery_prompt = f"Le seguenti patch in modalità Snippet non hanno funzionato (match non perfetto con l'originale):\n{file_list_str}\n\nTi fornisco di seguito il contenuto AGGIORNATO e REALE di questi file.\nPer favore, riscrivi l'output per applicare le tue correzioni a questi file, rispettando le nostre regole standard (usa FULL REWRITE se il file è molto piccolo, usa SNIPPET se è grande ma assicurati che <original> corrisponda esattamente a quanto vedi qui sotto):\n\n"
+                    
+                    for f_path in unique_fails:
+                        recovery_prompt += f"### File: {f_path}\n"
+                        try:
+                            with open(f_path, 'r', encoding='utf-8') as f:
+                                file_content = f.read()
+                            recovery_prompt += f"```\n{file_content}\n```\n\n"
+                        except Exception as e:
+                            recovery_prompt += f"*(Errore durante la lettura del file: {e})*\n\n"
+                            
                     pyperclip.copy(recovery_prompt)
                     print_success("✅ Prompt di ripristino copiato negli appunti!\n")
                     print("👉 1. Incolla il prompt nella chat per far correggere all'LLM i file rimanenti.")
@@ -1206,7 +1218,22 @@ def cmd_invert():
         
         if fails:
             print_error(f"❌ {len(fails)} snippet non invertiti (possibili modifiche manuali intercorse).")
-            pyperclip.copy("Le seguenti patch in modalità Snippet non hanno funzionato in undo, ripristinale tu in modalità FULL REWRITE:\n" + "\n".join([f"- {f}" for f in fails]))
+            
+            unique_fails = list(dict.fromkeys(fails))
+            file_list_str = "\n".join([f"- {f}" for f in unique_fails])
+            
+            recovery_prompt = f"Le seguenti patch in modalità Snippet non hanno funzionato in undo:\n{file_list_str}\n\nTi fornisco di seguito il contenuto AGGIORNATO e REALE di questi file.\nPer favore, analizza le tue modifiche precedenti e ripristina il codice allo stato originale per questi file, rispettando le nostre regole standard (usa FULL REWRITE se il file è molto piccolo, usa SNIPPET se è grande ma assicurati che <original> corrisponda esattamente a quanto vedi qui sotto):\n\n"
+            
+            for f_path in unique_fails:
+                recovery_prompt += f"### File: {f_path}\n"
+                try:
+                    with open(f_path, 'r', encoding='utf-8') as f:
+                        file_content = f.read()
+                    recovery_prompt += f"```\n{file_content}\n```\n\n"
+                except Exception as e:
+                    recovery_prompt += f"*(Errore durante la lettura del file: {e})*\n\n"
+                    
+            pyperclip.copy(recovery_prompt)
             print_success("✅ Prompt di ripristino copiato! Incollalo nella chat.")
         elif count > 0: 
             print_success(f"✅ Ripristino completato ({count} snippet).")
