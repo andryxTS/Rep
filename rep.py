@@ -1272,6 +1272,31 @@ def cmd_invert():
     except ET.ParseError as e: 
         print_error(f"Errore XML: {e}")
 
+def cmd_best():
+    ensure_prompts_exist()
+    if not os.path.exists(PROMPT_BEST_PRACTICE_FILE):
+        return print_error(f"File {PROMPT_BEST_PRACTICE_FILE} non trovato.")
+        
+    print_step(f"Apertura di {PROMPT_BEST_PRACTICE_FILE} ...")
+    
+    try:
+        # Tenta di aprire con VS Code
+        subprocess.run(f'code "{PROMPT_BEST_PRACTICE_FILE}"', shell=True, check=True)
+        print_success("File aperto in VS Code.")
+    except Exception as e:
+        print_warn(f"Impossibile aprire con 'code' ({e}). Tento con l'apertura di sistema...")
+        system = platform.system()
+        try:
+            if system == "Windows":
+                os.startfile(PROMPT_BEST_PRACTICE_FILE)
+            elif system == "Darwin":
+                subprocess.run(["open", PROMPT_BEST_PRACTICE_FILE])
+            else:
+                subprocess.run(["xdg-open", PROMPT_BEST_PRACTICE_FILE])
+            print_success("File aperto con l'applicazione predefinita.")
+        except Exception as fallback_e:
+            print_error(f"Impossibile aprire il file: {fallback_e}")
+
 def main():
     if len(sys.argv) < 2: cmd_apply()
     action = sys.argv[1]
@@ -1282,6 +1307,7 @@ def main():
     elif action == "ignore": cmd_ignore()
     elif action == "new": cmd_new()
     elif action in ["invert", "undo", "annulla", "cancel", "ripristina"]: cmd_invert()
+    elif action in ["best", "bestpractice", "best-practice", "best_practice", "bestpractices", "best-practices", "best_practices"]: cmd_best()
 
 if __name__ == "__main__":
     try:

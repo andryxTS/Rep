@@ -2,6 +2,7 @@
 **MIO FEEDBACK:**
 {user_input}
 
+`````md
 ## Fase ESECUTIVA
 Ora sei entrato nella fase esecutiva, è MOLTO delicata, perché sei chiamato a modificare più file, perché è un'app in produzione, perché NON abbiamo a disposizione più tentativi, dev'essere one-shot e il tuo output verrà automaticamente convertito in modifiche al mio repo (i file verranno sovrascritti!).
 
@@ -19,3 +20,4 @@ Ora sei entrato nella fase esecutiva, è MOLTO delicata, perché sei chiamato a 
    echo "y" | pnpm wrangler d1 migrations apply nome-del-db --local
 
 {formato_output}
+`````

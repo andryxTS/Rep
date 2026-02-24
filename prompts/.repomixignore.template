@@ -73,6 +73,7 @@ eslint.config.*
 
 # --- Cloudflare & Deployment Tools ---
 .dev.vars
+cloudflare-env.d.ts
 # wrangler.toml e wrangler.jsonc vengono mantenuti per contesto deploy
 # docker-compose.yml e ecosystem.config.js sono mantenuti come richiesto
 
