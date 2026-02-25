@@ -901,11 +901,20 @@ def cmd_check():
     else:
         # Costruzione del prompt per LLM (Testo aggiornato come richiesto)
         ts_report = "\n".join(filtered_errors)
+        prompt_message_init = (
+            "Ho eseguito un controllo del typescript con tsc e ho ottenuto questi errori:\n"
+            f"```typescript\n{ts_report}\n```\n\n"
+            "Proponimi delle soluzioni, chiedimi prima il feedback se c'è da prendere delle decisioni, "
+            "e nell'eseguire le correzioni effettive usa il formato di output XML che ti indicherò.\n"
+            "Ti prego solo di ignorare la parte \"<shell>\" di questo formato output perché non posso "
+            "eseguire ora comandi a terminale."
+        )
         prompt_message = (
             "Ho eseguito un controllo del typescript con tsc e ho ottenuto questi errori:\n"
             f"```typescript\n{ts_report}\n```\n\n"
             "Proponimi delle soluzioni, chiedimi prima il feedback se c'è da prendere delle decisioni, "
-            "e nell'eseguire le correzioni effettive usa il formato di output XML già concordato."
+            "e nell'eseguire le correzioni effettive usa il formato di output XML già concordato "
+            "(omettendo i comandi <shell>)."
         )
 
         print_error(f"❌ Trovati {len(filtered_errors)} errori logici nel codice sorgente.")
@@ -923,7 +932,7 @@ def cmd_check():
         
         if choice in ["", "1"]:
             # Opzione 1: Init Completo
-            cmd_init(auto_input=prompt_message)
+            cmd_init(auto_input=prompt_message_init)
             
         elif choice == "2":
             # Opzione 2: Solo Prompt (Smart)
