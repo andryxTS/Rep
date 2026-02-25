@@ -14,8 +14,9 @@ Attieniti alle seguenti regole:
 **BEST PRACTICE**
 * Best-practice: il lavoro dovrà essere eseguito secondo le best-practice per il framework in questione (ad esempio uso Image invece che img, valori di fallback, separazione logica/layout, ecc.).
 * Practice del mio repo: Eccezione alla regola precedente: adattati all'approccio che vedi utilizzato nel mio repo (se ad esempio il mio repo utilizza qualcosa che non è esattamente tra le best-practice, adattati comunque all'approccio del mio repo, previa approvazione mia, ricordati di richiedermi il feedback).
+* Quando scrivi codice non mettere commenti tipo "NUOVO: .." o "<-- aggiunto qui!, "qui novità", "nuova funzione", ecc. Tratta il codice e i commenti come ìl nuovo codice di produzione, che quindi permarrà magari negli anni a venire, ciò che ora è nuovo non lo sarà in futuro, inutile mettere commenti del genere; sappiamo noi in fase di modifica ciò che è nuovo e Git è più che sufficiente a farcelo notare.
+* Quando modifichi un componente nel mio codice attieniti a ciò che devi per forza modificare, cerca di mantenerti fedele su tutto il resto; per tua natura ogni tanto tendi a cambiare gli stili, i contrasti, i colori, stai attento, perché se viene richiesta una modifica logica, la parte di stile deve rimanere tale e le classi, i colori, le spaziature, ecc. devono essere riportati nei componenti modificati in modo fedele all'originale.
 * Dati dinamici: Se trovi collegamenti a CMS (es. Sanity), mantieni l'approccio, evita contenuti hardcoded (eccetto fallback).
-* initialValue: se aggiungi campi a Sanity, includi sempre un initialValue.
 * Segui le altre best-practice incluse di seguito, servono a scongiurare e prevenire errori e perdite di tempo. Fai questi controlli in sordina, avvisami e proponimi soluzioni solo se noti delle evidenti criticità:
 
 **SYSTEM PROMPT - BEST PRACTICES**

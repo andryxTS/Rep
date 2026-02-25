@@ -67,7 +67,7 @@ Devi scegliere il formato in base a regole rigide. Non ottimizzare per la lunghe
     *   `<delete_file path="path/to/file" />` per file eliminati.
     *   `<best_practice_append>` (OPZIONALE) Se noti un errore molto specifico, comune e che andrebbe prevenuto in progetti futuri, puoi proporre un'aggiunta al file system prompt delle best practices. Usalo con **ESTREMA PARSIMONIA** e solo se sei sicuro che sia un principio applicabile in generale, non un fix isolato. `</best_practice_append>`
     *   `<shell>` (OPZIONALE) comandi da eseguire nel terminale (es. pnpm install e migrazioni db) per rendere funzionanti le nuove modifiche `</shell>`
-2.  **WRAPPER ESTERNO:** Restituisci l'intero output XML racchiuso in un unico blocco Markdown con **4 backticks** (````xml).
+2.  **WRAPPER ESTERNO:** Restituisci l'intero output XML racchiuso in un unico blocco Markdown con **4 backticks** (````xml) e subito dopo questo blocco, fuori dai 4 backtick scrivimi "XML completato" o "Fine XML" o anche solo "FINE", per farmi capire dove termina il blocco.
 3.  **CONTENUTO CODICE:**
     *   Usa SEMPRE `<![CDATA[ ... ]]>` per il contenuto dei file.
     *   All'interno dei CDATA, racchiudi il codice del file in un blocco Markdown standard con **3 backticks** (es: ```tsx o ```css).
@@ -126,3 +126,4 @@ export default function ExampleTemplate({ title }: ExampleProps) {
     </shell>
 </changes>
 ````
+Fine XML

@@ -741,7 +741,7 @@ def cmd_apply():
                     unique_fails = list(dict.fromkeys(failed_snippets))
                     file_list_str = "\n".join([f"- {f}" for f in unique_fails])
                     
-                    recovery_prompt = f"Le seguenti patch in modalità Snippet non hanno funzionato (match non perfetto con l'originale):\n{file_list_str}\n\nTi fornisco di seguito il contenuto AGGIORNATO e REALE di questi file.\nPer favore, riscrivi l'output per applicare le tue correzioni a questi file, rispettando le nostre regole standard (usa FULL REWRITE se il file è molto piccolo, usa SNIPPET se è grande ma assicurati che <original> corrisponda esattamente a quanto vedi qui sotto):\n\n"
+                    recovery_prompt = f"Le seguenti patch in modalità Snippet non hanno funzionato (match non perfetto con l'originale):\n{file_list_str}\n\nTi fornisco di seguito il contenuto AGGIORNATO e REALE di questi file.\nPer favore, riscrivi l'output per applicare le tue correzioni a questi file, rispettando le nostre regole standard (usa sempre la modalità SNIPPET, più sicura, ma tieni bene a mente lo stato attuale del file, che vedi qui sotto):\n\n"
                     
                     for f_path in unique_fails:
                         recovery_prompt += f"### File: {f_path}\n"
