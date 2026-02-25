@@ -741,7 +741,21 @@ def cmd_apply():
                     unique_fails = list(dict.fromkeys(failed_snippets))
                     file_list_str = "\n".join([f"- {f}" for f in unique_fails])
                     
-                    recovery_prompt = f"Le seguenti patch in modalità Snippet non hanno funzionato (match non perfetto con l'originale):\n{file_list_str}\n\nTi fornisco di seguito il contenuto AGGIORNATO e REALE di questi file.\nPer favore, riscrivi l'output per applicare le tue correzioni a questi file, rispettando le nostre regole standard (usa sempre la modalità SNIPPET, più sicura, ma tieni bene a mente lo stato attuale del file, che vedi qui sotto):\n\n"
+                    recovery_prompt = f"""
+                        Le seguenti patch in modalità Snippet non hanno funzionato (match non perfetto con l'originale):
+                        {file_list_str}
+
+                        Ti fornisco di seguito il contenuto AGGIORNATO e REALE di questi file.
+                        Per favore, riscrivi l'output per applicare le tue correzioni a questi file, rispettando le nostre regole standard (usa sempre la modalità SNIPPET).
+
+                        ⚠️ **ISTRUZIONI CRITICHE DI SICUREZZA - LEGGI ATTENTAMENTE:**
+                        1. **SOURCE OF TRUTH:** Il codice riportato qui sotto è l'unica Verità Assoluta. Ignora qualsiasi versione precedente tu abbia in memoria o nel contesto.
+                        2. **DIVIETO DI ALLUCINAZIONE:** Prima di scrivere il tag <original>, devi **trovare letteralmente** quella stringa nel testo qui sotto. Se il codice che vuoi correggere non c'è (perché magari il file è già stato fixato o è diverso da come pensavi), **NON GENERARE LA PATCH** per quel file.
+                        3. **CHECK PREVENTIVO:** Se noti che il codice contiene già la modifica desiderata (es. il tipo TypeScript è già presente), NON toccare il file e segnalalo semplicemente nel riepilogo.
+                        4. **COPIA LETTERALE:** Il contenuto di <original> deve essere un copia-incolla esatto dal testo qui sotto. Non scrivere "a memoria".
+
+                        Ecco i file aggiornati:
+                        """
                     
                     for f_path in unique_fails:
                         recovery_prompt += f"### File: {f_path}\n"
@@ -904,10 +918,15 @@ def cmd_check():
         prompt_message_init = (
             "Ho eseguito un controllo del typescript con tsc e ho ottenuto questi errori:\n"
             f"```typescript\n{ts_report}\n```\n\n"
-            "Proponimi delle soluzioni, chiedimi prima il feedback se c'è da prendere delle decisioni, "
-            "e nell'eseguire le correzioni effettive usa il formato di output XML che ti indicherò.\n"
-            "Ti prego solo di ignorare la parte \"<shell>\" di questo formato output perché non posso "
-            "eseguire ora comandi a terminale."
+            "**DIRETTIVE CRITICHE DI ANALISI:**\n"
+            "1. **NO ALLUCINAZIONI:** Non dedurre il contenuto del file basandoti solo sul messaggio d'errore. L'errore ti dice *cosa* non va, ma solo il contesto allegato (`repomix-output.txt`) ti dice *com'è scritto davvero* il codice ora.\n"
+            "2. **LOCALIZZAZIONE:** Ricorda che l'errore segnalato alla riga X potrebbe essere causato da una definizione mancante o errata in un punto precedente o in un file diverso (es. interfacce o tipi importati).\n"
+            "3. **VERIFICA REALE:** Prima di proporre una soluzione, verifica se il codice nel contesto contiene già la fix (il report tsc potrebbe essere disallineato). Se il codice ti sembra già corretto, dimmelo.\n\n"
+            "**PROCEDURA:**\n"
+            "- Analizza l'errore confrontandolo con il codice reale.\n"
+            "- Proponimi delle soluzioni.\n"
+            "- Nell'eseguire le correzioni userai il formato XML che ti indicherò.\n"
+            "- **NOTA:** Ignora il tag `<shell>` che ti scriverò nel formato output, per il controllo del typescript gestisco io l'esecuzione dei comandi."
         )
         prompt_message = (
             "Ho eseguito un controllo del typescript con tsc e ho ottenuto questi errori:\n"
