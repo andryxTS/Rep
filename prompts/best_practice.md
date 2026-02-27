@@ -26,3 +26,17 @@
 *  Che esista effettivamente il file src/cloudflare-env.d.ts.
 *  Che nei file .gitignore e .repomixignore sia escluso /cloudflare-env.d.ts (nella root, file enorme che si genera da solo con la build) ma che sia incluso src/cloudflare-env.d.ts, semplicemente mettendo in entrambi i file questa direttiva `/cloudflare-env.d.ts` cancellando l'eventuale direttiva `cloudflare-env.d.ts` che li escluderebbe entrambi.
 *  Dopo il primo avviso fatto in questo modo (commento nella parte <shell> durante la fase di coding) non ricordarmi più di questa cosa, avrò già provveduto a sistemare.
+
+### ☁️ Inizializzazione Client in Cloudflare Workers
+* **No Top-Level Env:** Evita di inizializzare client di terze parti (Resend, AWS SDK, OpenAI) a livello globale nel file usando `process.env`. Nelle piattaforme serverless come Cloudflare, le variabili d'ambiente potrebbero non essere popolate al caricamento del modulo. Inizializza sempre i client all'interno della funzione (Server Action o Route Handler) recuperando i segreti tramite `getCloudflareContext().env`.
+
+### 🛡️ Tipizzazione Variabili d'Ambiente (Cloudflare)
+* **Sincronizzazione CloudflareEnv:** Ogni volta che aggiungi un segreto su Cloudflare (tramite `wrangler secret put`) o una variabile nel `wrangler.jsonc` che intendi leggere tramite `getCloudflareContext().env`, devi aggiornare obbligatoriamente l'interfaccia in `src/cloudflare-env.d.ts`. Senza questo passaggio, TypeScript bloccherà la build di Next.js segnalando che la proprietà non esiste sul tipo `CloudflareEnv`.
+
+### 🛠️ Resilienza alle Dipendenze Esterne (Zero-Config Tolerance)
+* **Build Resilience (Providers):** Quando integri SDK di terze parti (Auth, Analytics, CRM) tramite "Providers" nel `RootLayout`, verifica sempre l'esistenza della chiave (`NEXT_PUBLIC_...`) prima di renderizzare il componente. Se la chiave manca o è una stringa vuota, renderizza i `children` senza il provider per evitare crash durante la fase di build (Static Site Generation).
+* **Middleware & Action Safety:** Nel `middleware.ts` o nelle Server Actions, esegui un controllo preventivo sulla presenza delle Secret Key prima di invocare metodi di protezione o API esterne. Questo garantisce che l'app rimanga avviabile e navigabile nelle sue rotte pubbliche (es. Landing Pages) anche se l'infrastruttura esterna non è ancora stata configurata.
+* **Fallback Content:** Assicurati che le componenti UI che dipendono da dati esterni mostrino uno stato di fallback o un messaggio informativo invece di crashare l'intera pagina se il servizio non è inizializzato.
+
+### ☁️ Cloudflare Runtime Context & Static Build
+* **Dynamic Opt-out:** Se una pagina (Server Component) o una rotta API (GET) interagisce con il database D1, KV o R2 tramite `getCloudflareContext()`, Next.js fallirà la build tentando di pre-renderizzarla staticamente. Devi obbligatoriamente aggiungere `export const dynamic = "force-dynamic"` nel file della pagina o della rotta per forzare il rendering a runtime, dove il contesto di Cloudflare è disponibile.
