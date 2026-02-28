@@ -15,6 +15,7 @@ import platform
 import re
 import fnmatch
 import shutil
+import tempfile
 from colorama import init, Fore, Style
 
 # --- GESTIONE DIPENDENZE OPZIONALI ---
@@ -31,7 +32,8 @@ init(autoreset=True)
 # --- CONFIGURAZIONE ---
 STATE_FILE = ".rep_state.json"
 REPOMIX_IGNORE = ".repomixignore"
-TEMP_DIR = ".rep_temp"  # Nuova cartella temporanea
+TEMP_DIR = ".rep_temp"  # Cartella temporanea locale
+CURRENT_TEMP_DIR = TEMP_DIR  # Traccia la cartella effettivamente in uso
 REPOMIX_OUTPUT_FILENAME = "repomix-output.txt"
 PROMPT_FILENAME = "PROMPT.md"
 
@@ -54,12 +56,30 @@ def cleanup_and_exit():
     """Pulisce i file temporanei ed esce dallo script."""
     print(f"\n{Fore.RED}⛔ Operazione annullata.{Style.RESET_ALL}")
     
-    if os.path.exists(TEMP_DIR):
+    if CURRENT_TEMP_DIR and os.path.exists(CURRENT_TEMP_DIR):
         try:
-            shutil.rmtree(TEMP_DIR, ignore_errors=True)
+            shutil.rmtree(CURRENT_TEMP_DIR, ignore_errors=True)
         except Exception:
             pass
     sys.exit(0)
+
+def setup_temp_dir():
+    """Prepara la cartella temporanea, gestendo i lock di Google Drive/OneDrive."""
+    global CURRENT_TEMP_DIR
+    local_temp = TEMP_DIR
+    
+    try:
+        if os.path.exists(local_temp):
+            shutil.rmtree(local_temp)
+        os.makedirs(local_temp)
+        CURRENT_TEMP_DIR = local_temp
+        return CURRENT_TEMP_DIR
+    except (PermissionError, OSError) as e:
+        print_warn(f"Accesso negato alla cartella '{local_temp}'. Fallback attivo.")
+        fallback_dir = tempfile.mkdtemp(prefix="rep_temp_")
+        print_step(f"Uso cartella temporanea di sistema: {fallback_dir}")
+        CURRENT_TEMP_DIR = fallback_dir
+        return CURRENT_TEMP_DIR
 
 def print_step(msg): print(f"\n{Fore.CYAN}➤ {msg}{Style.RESET_ALL}")
 def print_success(msg): print(f"{Fore.GREEN}✔ {msg}{Style.RESET_ALL}")
@@ -291,11 +311,11 @@ def cmd_init(auto_input=None):
     # --------------------------------------
     
     # 1. Preparazione Temp
-    if os.path.exists(TEMP_DIR): shutil.rmtree(TEMP_DIR)
-    os.makedirs(TEMP_DIR)
+    global CURRENT_TEMP_DIR
+    CURRENT_TEMP_DIR = setup_temp_dir()
     
-    repomix_path = os.path.join(TEMP_DIR, REPOMIX_OUTPUT_FILENAME)
-    prompt_path = os.path.join(TEMP_DIR, PROMPT_FILENAME)
+    repomix_path = os.path.join(CURRENT_TEMP_DIR, REPOMIX_OUTPUT_FILENAME)
+    prompt_path = os.path.join(CURRENT_TEMP_DIR, PROMPT_FILENAME)
 
     # 2. Esecuzione Repomix
     print_step("Esecuzione Repomix (Output su file)...")
@@ -333,7 +353,7 @@ def cmd_init(auto_input=None):
     print_success(f"File creato: {prompt_path}")
 
     # 4. Copia negli Appunti / Apertura Cartella
-    files_to_copy = [prompt_path, repomix_path]
+    files_to_copy =[prompt_path, repomix_path]
     copied = copy_files_to_clipboard_os(files_to_copy)
     
     print_step("--- PRONTO PER IL CHATBOT ---")
@@ -342,7 +362,7 @@ def cmd_init(auto_input=None):
         print("👉 1. Vai nella chat e premi CTRL+V (Incolla).")
     else:
         print_warn("Impossibile copiare i file automaticamente.")
-        open_folder(TEMP_DIR)
+        open_folder(CURRENT_TEMP_DIR)
         print("👉 Ho aperto la cartella. Seleziona i 2 file e trascinali nella chat.")
 
     # 5. Attesa Feedback
@@ -353,8 +373,8 @@ def cmd_init(auto_input=None):
         feedback_input = "OK, fai tu in autonomia le scelte che ritieni più opportune."
 
     # 6. Pulizia Temp e Step 2
-    if os.path.exists(TEMP_DIR): 
-        shutil.rmtree(TEMP_DIR)
+    if os.path.exists(CURRENT_TEMP_DIR): 
+        shutil.rmtree(CURRENT_TEMP_DIR, ignore_errors=True)
         print_step("Cartella temporanea pulita.")
     
     # I file sono garantiti da ensure_prompts_exist()
@@ -753,7 +773,7 @@ def cmd_apply():
                             fails_by_file[f_path] =[]
                         fails_by_file[f_path].append(idx)
                     
-                    fail_list_str = "\n".join([f"- {path} (Snippet {', '.join(indices)})" for path, indices in fails_by_file.items()])
+                    fail_list_str = "\n".join([f"- [Snippet {', '.join(indices)}] {path}" for path, indices in fails_by_file.items()])
                     success_list_str = "\n".join(successful_snippets) if successful_snippets else "Nessuno."
                     
                     with open(PROMPT_PATCH_RECOVERY_FILE, "r", encoding="utf-8") as f:
@@ -1008,8 +1028,9 @@ def cmd_ignore():
 
     # 2. Esecuzione Repomix per ottenere la lista file attuale
     print_step("Esecuzione Repomix per analisi struttura...")
-    temp_repomix_out = os.path.join(TEMP_DIR, "structure_check.xml")
-    if not os.path.exists(TEMP_DIR): os.makedirs(TEMP_DIR)
+    global CURRENT_TEMP_DIR
+    CURRENT_TEMP_DIR = setup_temp_dir()
+    temp_repomix_out = os.path.join(CURRENT_TEMP_DIR, "structure_check.xml")
     
     run_command(f"repomix --style xml --output {temp_repomix_out}", capture=False)
 
@@ -1178,10 +1199,10 @@ def cmd_new():
     print_step("Riassunto acquisito.")
 
     # --- FASE 3: Generazione Repomix ---
-    if os.path.exists(TEMP_DIR): shutil.rmtree(TEMP_DIR)
-    os.makedirs(TEMP_DIR)
+    global CURRENT_TEMP_DIR
+    CURRENT_TEMP_DIR = setup_temp_dir()
     
-    repomix_path = os.path.join(TEMP_DIR, REPOMIX_OUTPUT_FILENAME)
+    repomix_path = os.path.join(CURRENT_TEMP_DIR, REPOMIX_OUTPUT_FILENAME)
     print_step("Generazione Repomix aggiornato...")
     
     # Crea repomixignore se non esiste (come in init)
@@ -1225,7 +1246,7 @@ def cmd_new():
         f"{new_session_template}"
     )
 
-    prompt_path = os.path.join(TEMP_DIR, PROMPT_FILENAME)
+    prompt_path = os.path.join(CURRENT_TEMP_DIR, PROMPT_FILENAME)
     with open(prompt_path, "w", encoding="utf-8") as f:
         f.write(final_prompt_content)
     
@@ -1240,7 +1261,7 @@ def cmd_new():
         print_success("✅ I 2 file (PROMPT.md con riassunto e XML) sono stati copiati negli appunti!")
         print("👉 Vai nella NUOVA chat e premi CTRL+V.")
     else:
-        open_folder(TEMP_DIR)
+        open_folder(CURRENT_TEMP_DIR)
         print("👉 Ho aperto la cartella. Trascina i 2 file nella NUOVA chat.")
         
 def cmd_invert():

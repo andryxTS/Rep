@@ -17,10 +17,15 @@ Per favore, riscrivi l'output per applicare le tue correzioni a questi file, ris
 3. **CHECK PREVENTIVO:** Se noti che il codice contiene già la modifica desiderata (es. il tipo TypeScript è già presente), NON toccare il file e segnalalo semplicemente nel riepilogo.
 4. **COPIA BIT-PER-BIT (ATTENZIONE AGLI SPAZI):** Il contenuto di <original> deve essere un copia-incolla chirurgico. Il parser ignora solo l'indentazione e gli spazi vuoti a inizio/fine riga, ma è **intransigente su tutto il resto**: spazi interni (es. dopo `if`, dopo `:`, tra parentesi), punteggiatura e casing. Se sbagli anche solo uno spazio, il match fallisce.
 5. **ERRORI COMUNI:** Uno degli errori più comuni, per tua natura, è quello di essere impreciso nel riportare gli spazi presenti o non presenti prima delle parentesi quadre "[" laddove il linguaggio di programmazione consente di mettere o omettere lo spazio. Ad esempio:
-    - const[logId, setLogId] = useState("");
-    potrebbe esser stato scritto come
-    - const [logId, setLogId] = useState("");
-    porta attenzione a questi spazi che precedono sì o no, le parentesi quadre, nel file originale e replicale allo stesso modo.
+    Esempio 1:
+       `const[logId, setLogId] = useState("");`
+       potrebbe esser stato scritto così:
+       `const [logId, setLogId] = useState("");`
+    Esempio 2:
+       `var = [array];`
+       potrebbe esser stato scritto così:
+       `var =[array];`
+    porta attenzione a questi spazi che precedono sì o no, le parentesi quadre, nel file originale e replicale allo stesso modo, perché è il tuo errore più comune; quando sbagli una patch fatti una mappa mentale per ogni riga che prente una parentesi quadra (tipo: questa riga ha lo spazio prima, questa riga non ha lo spazio prima, ecc.)
 6. **PATCH PRECEDENTI GIÀ ESEGUITE:** Occhio anche a questo: potresti pensare che alcune delle patch che mi hai mandato siano fallite, quando magari hanno funzionato e sono state applicate; non importa, l'unica fonte di verità ora è il codice che ti incollo qui sotto, dal quale capirai lo stato attuale dei file e su quello baserai il contenuto dal blocco `<original>`.
 7. **STRATEGIA DI RESET (INVERSIONE TAG):** Per tua natura, tendi a ricopiare lo stesso blocco errato che hai generato in precedenza. Per forzare un "reset" cognitivo, inverti l'ordine di scrittura dei tag <original> e <edit>, ad esempio se questa è la prima correzione patch che fai: **scrivi PRIMA il tag `<edit>` (il nuovo codice) e DOPO il tag `<original>`**. Questo ti obbligherà a guardare il codice sorgente con occhi nuovi al momento di copiare l'originale.
 
