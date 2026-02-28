@@ -143,7 +143,10 @@ def get_multiline_input(prompt_text, default_text=""):
 
         @kb.add('enter')
         def _(event):
-            event.current_buffer.insert_text('\n')
+            if not event.current_buffer.text.strip():
+                event.current_buffer.validate_and_handle()
+            else:
+                event.current_buffer.insert_text('\n')
 
         @kb.add('c-v')
         def _(event):
@@ -159,7 +162,7 @@ def get_multiline_input(prompt_text, default_text=""):
         def _(event):
             event.current_buffer.validate_and_handle()
 
-        print(f"{Style.DIM}(Scrivi il messaggio. Premi {Fore.CYAN}CTRL+INVIO{Style.RESET_ALL}{Style.DIM} per inviare, {Fore.RED}ESC{Style.RESET_ALL}{Style.DIM} per annullare){Style.RESET_ALL}")        
+        print(f"{Style.DIM}(Scrivi il messaggio. Premi {Fore.CYAN}INVIO a vuoto{Style.RESET_ALL}{Style.DIM} per saltare/inviare, {Fore.CYAN}CTRL+INVIO{Style.RESET_ALL}{Style.DIM} per inviare testo multilinea, {Fore.RED}ESC{Style.RESET_ALL}{Style.DIM} per annullare){Style.RESET_ALL}")
         
         session = PromptSession(key_bindings=kb, multiline=True)
         try:
@@ -171,11 +174,12 @@ def get_multiline_input(prompt_text, default_text=""):
         # Fallback standard
         if default_text:
             print(f"{Style.DIM}Testo originale:\n{default_text}{Style.RESET_ALL}")
-        print(f"{Style.DIM}(Scrivi 'END' su una riga vuota e premi Invio per terminare. CTRL+C per annullare){Style.RESET_ALL}")
+        print(f"{Style.DIM}(Premi INVIO a vuoto per saltare/inviare, o scrivi 'END' su una riga vuota per terminare il multilinea. CTRL+C per annullare){Style.RESET_ALL}")
         lines = []
         try:
             while True:
                 line = input()
+                if not lines and not line.strip(): break
                 if line.strip() == "END": break
                 lines.append(line)
         except KeyboardInterrupt:
