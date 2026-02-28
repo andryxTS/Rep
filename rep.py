@@ -635,6 +635,7 @@ def cmd_apply():
                 changes_count = 0
                 shell_commands = []
                 failed_snippets = []
+                successful_snippets = []
 
                 for file_node in root.findall('file'):
                     path = file_node.get('path')
@@ -650,6 +651,7 @@ def cmd_apply():
 
                 for snippet in root.findall('snippet'):
                     path = snippet.get('path')
+                    idx = snippet.get('index', 'N/A')
                     # Gestione sicura dei nodi figlio
                     original_node = snippet.find('original')
                     edit_node = snippet.find('edit')
@@ -660,8 +662,9 @@ def cmd_apply():
                     # Tenta l'applicazione
                     if apply_snippet_fuzzy(path, original_text, edit_text):
                         changes_count += 1
+                        successful_snippets.append(f"- [Snippet {idx}] {path}")
                     else:
-                        failed_snippets.append(path)
+                        failed_snippets.append((path, idx))
 
                 for del_node in root.findall('delete_file'):
                     path = del_node.get('path')
@@ -743,17 +746,24 @@ def cmd_apply():
                 if failed_snippets:
                     print_error(f"\nAttenzione: {len(failed_snippets)} snippet non sono stati applicati.")
                     
-                    # Deduplica mantenendo l'ordine (evita ripetizioni se falliscono più snippet sullo stesso file)
-                    unique_fails = list(dict.fromkeys(failed_snippets))
-                    file_list_str = "\n".join([f"- {f}" for f in unique_fails])
+                    # Raggruppa i fallimenti per file
+                    fails_by_file = {}
+                    for f_path, idx in failed_snippets:
+                        if f_path not in fails_by_file:
+                            fails_by_file[f_path] =[]
+                        fails_by_file[f_path].append(idx)
+                    
+                    fail_list_str = "\n".join([f"- {path} (Snippet {', '.join(indices)})" for path, indices in fails_by_file.items()])
+                    success_list_str = "\n".join(successful_snippets) if successful_snippets else "Nessuno."
                     
                     with open(PROMPT_PATCH_RECOVERY_FILE, "r", encoding="utf-8") as f:
                         recovery_template = f.read()
                         
-                    recovery_prompt = recovery_template.replace("{failed_snippets}", str(len(failed_snippets)))
-                    recovery_prompt = recovery_prompt.replace("{file_list_str}", file_list_str)
+                    recovery_prompt = recovery_template.replace("{failed_count}", str(len(failed_snippets)))
+                    recovery_prompt = recovery_prompt.replace("{fail_list_str}", fail_list_str)
+                    recovery_prompt = recovery_prompt.replace("{success_list_str}", success_list_str)
                     
-                    for f_path in unique_fails:
+                    for f_path in fails_by_file.keys():
                         recovery_prompt += f"### File: {f_path}\n"
                         try:
                             with open(f_path, 'r', encoding='utf-8') as f:
@@ -1255,6 +1265,7 @@ def cmd_invert():
             
         for snip in root.findall('snippet'):
             p = snip.get('path')
+            idx = snip.get('index', 'N/A')
             o_node = snip.find('original')
             e_node = snip.find('edit')
             
@@ -1265,19 +1276,24 @@ def cmd_invert():
             if apply_snippet_fuzzy(p, e_txt, o_txt): 
                 count += 1
             else: 
-                fails.append(p)
+                fails.append((p, idx))
                 
         save_state()
         
         if fails:
             print_error(f"❌ {len(fails)} snippet non invertiti (possibili modifiche manuali intercorse).")
             
-            unique_fails = list(dict.fromkeys(fails))
-            file_list_str = "\n".join([f"- {f}" for f in unique_fails])
+            fails_by_file = {}
+            for f_path, idx in fails:
+                if f_path not in fails_by_file:
+                    fails_by_file[f_path] = []
+                fails_by_file[f_path].append(idx)
+            
+            file_list_str = "\n".join([f"- {path} (Snippet {', '.join(indices)})" for path, indices in fails_by_file.items()])
             
             recovery_prompt = f"Le seguenti patch in modalità Snippet non hanno funzionato in undo:\n{file_list_str}\n\nTi fornisco di seguito il contenuto AGGIORNATO e REALE di questi file.\nPer favore, analizza le tue modifiche precedenti e ripristina il codice allo stato originale per questi file, rispettando le nostre regole standard (usa FULL REWRITE se il file è molto piccolo, usa SNIPPET se è grande ma assicurati che <original> corrisponda esattamente a quanto vedi qui sotto):\n\n"
             
-            for f_path in unique_fails:
+            for f_path in fails_by_file.keys():
                 recovery_prompt += f"### File: {f_path}\n"
                 try:
                     with open(f_path, 'r', encoding='utf-8') as f:

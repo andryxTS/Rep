@@ -10,7 +10,7 @@ Massima attenzione, perché il tuo output verrà elaborato automaticamente da un
 *   **Indentazione:** Mantieni l'indentazione perfetta dentro i 3 backticks. NON minificare.
 
 **Esempio Snippet 1 (modifica righe):**
-<snippet path="src/utils.ts">
+<snippet index="1" path="src/utils.ts">
     <original><![CDATA[
         ```
             const x = 10;
@@ -24,7 +24,7 @@ Massima attenzione, perché il tuo output verrà elaborato automaticamente da un
 </snippet>
 
 **Esempio Snippet 2 (aggiunta righe):**
-<snippet path="src/utils.ts">
+<snippet index="2" path="src/utils.ts">
     <original><![CDATA[
     ```
         const x = 10;
@@ -62,7 +62,7 @@ Devi scegliere il formato in base a regole rigide. Non ottimizzare per la lunghe
 ### FORMATO DELL'OUTPUT: XML
 1.  **STRUTTURA:** Usa il tag radice `<changes>`.
     *   `<file path="path/to/file">` per file creati o riscritti interamente.
-    *   `<snippet path="path/to/file">` per modifiche mirate (Search & Replace).
+    *   `<snippet index="1" path="path/to/file">` per modifiche mirate (Search & Replace). L'attributo "index" (progressivo: 1, 2, 3...) è OBBLIGATORIO.
         *   Dentro snippet usa `<original>` (codice da cercare) e `<edit>` (codice da sostituire).
     *   `<delete_file path="path/to/file" />` per file eliminati.
     *   `<best_practice_append>` (OPZIONALE) Se noti un errore molto specifico, comune e che andrebbe prevenuto in progetti futuri, puoi proporre un'aggiunta al file system prompt delle best practices. Usalo con **ESTREMA PARSIMONIA** e solo se sei sicuro che sia un principio applicabile in generale, non un fix isolato. `</best_practice_append>`
@@ -100,8 +100,8 @@ export default function ExampleTemplate({ title }: ExampleProps) {
   ]]></file>
  <!-- Se devi cancellare file: -->
   <delete_file path="src/app/old_file.ts" />
- <!-- Se devi modificare solo dei piccoli snippet: -->
-    <snippet path="src/utils.ts">
+ <!-- Se devi modificare solo dei piccoli snippet (ricorda l'attributo index): -->
+    <snippet index="1" path="src/utils.ts">
         <original><![CDATA[
             ```
                 const x = 10;

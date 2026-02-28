@@ -1,5 +1,12 @@
-{failed_snippets} patch in modalità Snippet, riguardanti i seguenti file, non hanno funzionato (match non perfetto con l'originale):
-{file_list_str}
+{failed_count} patch in modalità Snippet non hanno funzionato (match non perfetto con l'originale).
+
+✅ **SNIPPET APPLICATI CON SUCCESSO:**
+Questi snippet hanno funzionato e sono GIÀ STATI APPLICATI al codice. **NON RIGENERARLI!**
+{success_list_str}
+
+❌ **SNIPPET FALLITI (DA CORREGGERE):**
+Questi snippet hanno fallito. Riscrivi SOLO le patch per questi:
+{fail_list_str}
 
 Ti fornisco di seguito il contenuto AGGIORNATO e REALE di questi file.
 Per favore, riscrivi l'output per applicare le tue correzioni a questi file, rispettando le nostre regole standard (usa sempre la modalità SNIPPET).
