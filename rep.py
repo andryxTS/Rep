@@ -400,13 +400,13 @@ def cmd_init(auto_input=None):
     wait_for_enter()
     cmd_apply()
 
-def apply_snippet(file_path, original_block, edit_block):
+def apply_snippet(file_path, original_block, edit_block, snippet_index="N/A"):
     if not os.path.exists(file_path): return False
     with open(file_path, 'r', encoding='utf-8') as f: content = f.read()
     if original_block.strip() in content:
         new_content = content.replace(original_block.strip(), edit_block.strip())
         with open(file_path, 'w', encoding='utf-8') as f: f.write(new_content)
-        print_success(f"[Snippet] Applicato: {file_path}")
+        print(f"✅ Snippet [{snippet_index}] applicato a: {file_path}")
         return True
     return False
 
@@ -427,9 +427,9 @@ def normalize_line(line):
     # Normalizza gli spazi interni (es. "def  func" diventa "def func")
     return re.sub(r'\s+', ' ', line)
 
-def apply_snippet_fuzzy(file_path, original_block, edit_block):
+def apply_snippet_fuzzy(file_path, original_block, edit_block, snippet_index="N/A"):
     if not os.path.exists(file_path):
-        print_warn(f"[Snippet] File non trovato: {file_path}")
+        print_warn(f"Snippet [{snippet_index}] - File non trovato: {file_path}")
         return False
 
     # 1. Leggiamo il file originale preservando tutto
@@ -451,7 +451,7 @@ def apply_snippet_fuzzy(file_path, original_block, edit_block):
             target_sequence.append(norm)
 
     if not target_sequence:
-        print_warn(f"Lo snippet originale conteneva solo commenti o spazi vuoti.")
+        print_warn(f"Lo snippet [{snippet_index}] originale conteneva solo commenti o spazi vuoti.")
         return False
 
     # 4. Algoritmo di ricerca della sequenza (Sliding Window)
@@ -510,13 +510,13 @@ def apply_snippet_fuzzy(file_path, original_block, edit_block):
         with open(file_path, 'w', encoding='utf-8') as f:
             f.writelines(original_lines)
             
-        print(f"✅ Snippet applicato a: {file_path}")
+        print(f"✅ Snippet [{snippet_index}] applicato a: {file_path}")
         return True
     
     else:
-        print_warn(f"Lo snippet originale non coincide: {file_path}")
+        print_warn(f"Lo snippet[{snippet_index}] originale non coincide: {file_path}")
 
-    return False
+        return False
 
 # --- HELPER PER GESTIONE IGNORE ---
 
@@ -680,7 +680,7 @@ def cmd_apply():
                     edit_text = clean_code_content(edit_node.text) if edit_node is not None else ""
 
                     # Tenta l'applicazione
-                    if apply_snippet_fuzzy(path, original_text, edit_text):
+                    if apply_snippet_fuzzy(path, original_text, edit_text, snippet_index=idx):
                         changes_count += 1
                         successful_snippets.append(f"- [Snippet {idx}] {path}")
                     else:
@@ -764,7 +764,8 @@ def cmd_apply():
 
                 # NUOVO: Gestione fallimenti e generazione prompt di ripristino
                 if failed_snippets:
-                    print_error(f"\nAttenzione: {len(failed_snippets)} snippet non sono stati applicati.")
+                    print()
+                    print_error(f"Attenzione: {len(failed_snippets)} snippet non sono stati applicati.")
                     
                     # Raggruppa i fallimenti per file
                     fails_by_file = {}
@@ -1294,7 +1295,7 @@ def cmd_invert():
             e_txt = clean_code_content(e_node.text) if e_node is not None else ""
             
             # INVERSIONE REALE: cerchiamo 'edit' e ripristiniamo 'original'
-            if apply_snippet_fuzzy(p, e_txt, o_txt): 
+            if apply_snippet_fuzzy(p, e_txt, o_txt, snippet_index=idx): 
                 count += 1
             else: 
                 fails.append((p, idx))
