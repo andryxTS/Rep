@@ -40,3 +40,14 @@
 
 ### ☁️ Cloudflare Runtime Context & Static Build
 * **Dynamic Opt-out:** Se una pagina (Server Component) o una rotta API (GET) interagisce con il database D1, KV o R2 tramite `getCloudflareContext()`, Next.js fallirà la build tentando di pre-renderizzarla staticamente. Devi obbligatoriamente aggiungere `export const dynamic = "force-dynamic"` nel file della pagina o della rotta per forzare il rendering a runtime, dove il contesto di Cloudflare è disponibile.
+
+### ☁️ Limiti `waitUntil()` in Cloudflare Workers per Task Lunghi
+* **Niente `waitUntil` per AI/LLM:** Non delegare operazioni di lunga durata (come l'analisi nativa audio/video o chiamate LLM complesse) alla funzione `ctx.waitUntil()`. In Cloudflare Workers, i task in background vengono terminati rigidamente in breve tempo (circa 30 secondi) dopo che la risposta HTTP principale è stata inviata al client ("waitUntil tasks did not complete within the allowed time").
+* **Soluzione Sincrona:** Per aggirare questo limite ed evitare la terminazione precoce del worker, esegui sempre i task lunghi in modo **sincrono** (usando `await`) *prima* di restituire l'oggetto `NextResponse`, oppure innescali tramite Server Actions (`"use server"`). Mantenendo la connessione HTTP aperta con il client, Cloudflare concede un massimale di tempo di esecuzione notevolmente superiore (spesso oltre 100 secondi), garantendo la corretta esecuzione del nodo AI.
+
+### 📝 Stile e Formattazione del Codice (Destrutturazione)
+* **Spaziatura obbligatoria nelle dichiarazioni:** Quando scrivi o modifichi codice (soprattutto nella stesura degli snippet `<edit>`), anche nelle parti ricopiate e intoccate, mantieni SEMPRE uno spazio vuoto tra le parole chiave di dichiarazione (`const`, `let`, `var`) e le parentesi quadre o graffe di destrutturazione. 
+  * ❌ ERRATO: `const[stato, setStato] = useState()`
+  * ✅ CORRETTO: `const [stato, setStato] = useState()`
+  Questo garantisce la leggibilità del codice, rispetta la formattazione originale e previene warning stilistici da parte di formatter come Prettier o linter come ESLint.
+  NB: attento perché ogni tanto tendi a mangiarti qualche spazio prima delle parentesi quadre anche quando stai soltanto ricopiando pari pari una riga di codice originale.
