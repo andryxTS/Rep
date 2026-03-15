@@ -51,3 +51,13 @@
   * ✅ CORRETTO: `const [stato, setStato] = useState()`
   Questo garantisce la leggibilità del codice, rispetta la formattazione originale e previene warning stilistici da parte di formatter come Prettier o linter come ESLint.
   NB: attento perché ogni tanto tendi a mangiarti qualche spazio prima delle parentesi quadre anche quando stai soltanto ricopiando pari pari una riga di codice originale.
+
+### 🦜🔗 LangChain & Prompt Engineering
+*   **Escaping Parentesi Graffe (JSON in Prompt):** Quando si definiscono template di prompt che includono variabili dinamiche (es. `{input}`), tutte le parentesi graffe *letterali* destinate all'LLM (come negli esempi JSON o blocchi di codice) DEVONO essere raddoppiate (`{{` e `}}`). Se si scrive `{ "key": "val" }`, LangChain cercherà una variabile chiamata `"key": "val"` e fallirà con errore `Single '}' in template`.
+    *   *Esempio:* `Esempio di output: {{ "risultato": "ok" }}`.
+
+### ☁️ Configurazione Wrangler per OpenNext (Workers vs Pages)
+* **Conflitto `pages_build_output_dir`:** Quando si configura un progetto OpenNext per essere distribuito come Cloudflare Worker sfruttando la nuova direttiva `"assets": { "directory": ".open-next/assets", "binding": "ASSETS" }`, NON inserire mai la direttiva legacy `"pages_build_output_dir"`. La presenza di quest'ultima confonde la CLI, facendole credere che si tratti di un progetto Cloudflare Pages. Questo causerà il blocco immediato del comando `wrangler deploy` in CI/CD con l'errore: "It looks like you've run a Workers-specific command in a Pages project".
+
+### Cursor:pointer, su tutti i link e bottoni
+Ricordati di mettere il cursor pointer su ogni link e pulsante o qualsiasi elemento che cliccato svolge un'azione.

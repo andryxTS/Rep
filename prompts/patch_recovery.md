@@ -27,6 +27,5 @@ Per favore, riscrivi l'output per applicare le tue correzioni a questi file, ris
        `var =[array];`
     porta attenzione a questi spazi che precedono sì o no, le parentesi quadre, nel file originale e replicale allo stesso modo, perché è il tuo errore più comune; quando sbagli una patch fatti una mappa mentale per ogni riga che prente una parentesi quadra (tipo: questa riga ha lo spazio prima, questa riga non ha lo spazio prima, ecc.)
 6. **PATCH PRECEDENTI GIÀ ESEGUITE:** Occhio anche a questo: potresti pensare che alcune delle patch che mi hai mandato siano fallite, quando magari hanno funzionato e sono state applicate; non importa, l'unica fonte di verità ora è il codice che ti incollo qui sotto, dal quale capirai lo stato attuale dei file e su quello baserai il contenuto dal blocco `<original>`.
-7. **STRATEGIA DI RESET (INVERSIONE TAG):** Per tua natura, tendi a ricopiare lo stesso blocco errato che hai generato in precedenza. Per forzare un "reset" cognitivo, inverti l'ordine di scrittura dei tag <original> e <edit>, ad esempio se questa è la prima correzione patch che fai: **scrivi PRIMA il tag `<edit>` (il nuovo codice) e DOPO il tag `<original>`**. Questo ti obbligherà a guardare il codice sorgente con occhi nuovi al momento di copiare l'originale.
 
 Ecco i file aggiornati:
