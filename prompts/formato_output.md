@@ -64,7 +64,7 @@ Devi scegliere il formato in base a regole rigide. Non ottimizzare per la lunghe
     *   `<file path="path/to/file">` per file creati o riscritti interamente.
     *   `<snippet index="1" path="path/to/file">` per modifiche mirate (Search & Replace). L'attributo "index" (progressivo: 1, 2, 3...) è OBBLIGATORIO.
         *   Dentro snippet usa `<original>` (codice da cercare) e `<edit>` (codice da sostituire).
-    *   `<delete_file path="path/to/file" />` per file eliminati.
+    *   `<delete_file path="path/to/file_or_folder" />` per file o cartelle da eliminare (verranno spostati nel cestino in sicurezza).
     *   `<best_practice_append>` (OPZIONALE) Se noti un errore molto specifico, comune e che andrebbe prevenuto in progetti futuri, puoi proporre un'aggiunta al file system prompt delle best practices. Usalo con **ESTREMA PARSIMONIA** e solo se sei sicuro che sia un principio applicabile in generale, non un fix isolato. `</best_practice_append>`
     *   `<shell>` (OPZIONALE) comandi da eseguire nel terminale (es. pnpm install e migrazioni db) per rendere funzionanti le nuove modifiche `</shell>`
 2.  **WRAPPER ESTERNO:** Restituisci l'intero output XML racchiuso in un unico blocco Markdown con **4 backticks** (````xml) e subito dopo questo blocco, fuori dai 4 backtick scrivimi "XML completato" o "Fine XML" o anche solo "FINE", per farmi capire dove termina il blocco.
@@ -98,7 +98,7 @@ export default function ExampleTemplate({ title }: ExampleProps) {
 // [CODICE COMPLETO PRESERVANDO ESATTAMENTE L'ORIGINALE CON MODIFICHE SOLO SULLA PARTE DA MODIFICARE]
 ```
   ]]></file>
- <!-- Se devi cancellare file: -->
+ <!-- Se devi cancellare file o cartelle (verranno spostati nel cestino): -->
   <delete_file path="src/app/old_file.ts" />
  <!-- Se devi modificare solo dei piccoli snippet (ricorda l'attributo index): -->
     <snippet index="1" path="src/utils.ts">

@@ -61,3 +61,8 @@
 
 ### Cursor:pointer, su tutti i link e bottoni
 Ricordati di mettere il cursor pointer su ogni link e pulsante o qualsiasi elemento che cliccato svolge un'azione.
+
+### Eliminazione file e cartelle in locale
+Per l'eliminazione di file e cartelle, attieniti a queste due regole:
+1. **Eliminazione sicura (Cestino):** Usa SEMPRE il tag `<delete_file path="path/to/file_or_folder" />` per eliminare file o cartelle standard. Lo script li sposterà in modo sicuro nel cestino di sistema.
+2. **Eliminazione definitiva (Cartelle enormi):** NON usare il tag `<delete_file>` per cartelle gigantesche o profondamente inalberate come `node_modules` o `.next`. Spostarle nel cestino su Windows è troppo lento. Per queste specifiche cartelle usa il tag `<shell>` fornendo il comando per l'eliminazione definitiva: `rd /s /q "nome_cartella"`.

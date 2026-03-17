@@ -16,6 +16,7 @@ import re
 import fnmatch
 import shutil
 import tempfile
+import ctypes
 from colorama import init, Fore, Style
 
 # --- GESTIONE DIPENDENZE OPZIONALI ---
@@ -133,6 +134,66 @@ def open_folder(path):
         subprocess.run(["open", path])
     else:
         subprocess.run(["xdg-open", path])
+
+def send_to_trash(path):
+    """Tenta di inviare il file o cartella nel cestino tramite API di sistema (Windows).
+    Se fallisce o il sistema non è Windows, ripiega sull'eliminazione definitiva."""
+    if platform.system() != "Windows":
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        else:
+            os.remove(path)
+        return
+
+    try:
+        HWND = ctypes.c_void_p
+        UINT = ctypes.c_uint
+        LPCWSTR = ctypes.c_wchar_p
+        WORD = ctypes.c_ushort
+        BOOL = ctypes.c_int
+        LPVOID = ctypes.c_void_p
+
+        class SHFILEOPSTRUCTW(ctypes.Structure):
+            _fields_ =[
+                ("hwnd", HWND),
+                ("wFunc", UINT),
+                ("pFrom", LPCWSTR),
+                ("pTo", LPCWSTR),
+                ("fFlags", WORD),
+                ("fAnyOperationsAborted", BOOL),
+                ("hNameMappings", LPVOID),
+                ("lpszProgressTitle", LPCWSTR)
+            ]
+
+        FO_DELETE = 3
+        FOF_ALLOWUNDO = 0x40
+        FOF_NOCONFIRMATION = 0x10
+        FOF_SILENT = 0x04
+        FOF_NOERRORUI = 0x0400
+
+        # SHFileOperation richiede una stringa terminata con doppio null byte
+        double_null_path = os.path.abspath(path) + '\0\0'
+
+        shfos = SHFILEOPSTRUCTW()
+        shfos.hwnd = None
+        shfos.wFunc = FO_DELETE
+        shfos.pFrom = double_null_path
+        shfos.pTo = None
+        shfos.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT | FOF_NOERRORUI
+        shfos.fAnyOperationsAborted = False
+        shfos.hNameMappings = None
+        shfos.lpszProgressTitle = None
+
+        result = ctypes.windll.shell32.SHFileOperationW(ctypes.byref(shfos))
+        
+        if result != 0:
+            raise Exception(f"SHFileOperationW failed with code {result}")
+    except Exception:
+        # Fallback in caso di errore
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        else:
+            os.remove(path)
 
 def ensure_prompts_exist():
     if not os.path.exists(PROMPTS_DIR):
@@ -696,8 +757,8 @@ def cmd_apply():
                 for del_node in root.findall('delete_file'):
                     path = del_node.get('path')
                     if os.path.exists(path):
-                        os.remove(path)
-                        print_warn(f"[DEL] Eliminato: {path}")
+                        send_to_trash(path)
+                        print_warn(f"[DEL] Rimosso (cestino): {path}")
                         changes_count += 1
                         
                 # --- NUOVO: Gestione best_practice_append ---
