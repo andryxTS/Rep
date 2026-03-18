@@ -474,20 +474,23 @@ def apply_snippet(file_path, original_block, edit_block, snippet_index="N/A"):
 def normalize_line(line):
     """
     Pulisce una riga per il confronto 'fuzzy' ultra-aggressivo:
+    - Ignora i commenti per matchare le righe anche se l'LLM li omette o li modifica.
     - Rimuove TUTTI gli spazi, tabulazioni, a capo e caratteri invisibili.
     Restituisce None se la riga diventa vuota dopo la pulizia.
     """
-    # Rimuove whitespace laterali
     line = line.strip()
-    
-    # Se la riga è vuota, la ignoriamo
     if not line:
         return None
         
-    # Rimuove tutti gli spazi e caratteri invisibili (es. Zero-width space)
+    # 1. Rimuove i commenti monoriga (le condizioni evitano di rompere codice valido)
+    line = re.sub(r'<!--.*?-->', '', line)           # Commenti HTML
+    line = re.sub(r'/\*.*?\*/', '', line)            # Commenti a blocco monoriga JS/CSS
+    line = re.sub(r'(?<!:)//.*$', '', line)          # Commenti // (il negative lookbehind esclude gli URL con ://)
+    line = re.sub(r'(^|\s)#.*$', '', line)           # Commenti # (solo inizio riga o dopo spazio, salva href="#id" e bg-[#fff])
+
+    # 2. Rimuove tutti gli spazi e caratteri invisibili (es. Zero-width space)
     line = re.sub(r'[\s\u200B-\u200D\uFEFF]+', '', line)
     
-    # Ri-controllo nel caso la riga fosse composta solo da caratteri invisibili
     if not line:
         return None
         
