@@ -473,10 +473,8 @@ def apply_snippet(file_path, original_block, edit_block, snippet_index="N/A"):
 
 def normalize_line(line):
     """
-    Pulisce una riga per il confronto 'fuzzy' aggressivo:
-    - Rimuove spazi a inizio/fine.
-    - Riduce spazi multipli interni a uno solo.
-    - Elimina completamente gli spazi attorno a parentesi e operatori.
+    Pulisce una riga per il confronto 'fuzzy' ultra-aggressivo:
+    - Rimuove TUTTI gli spazi, tabulazioni, a capo e caratteri invisibili.
     Restituisce None se la riga diventa vuota dopo la pulizia.
     """
     # Rimuove whitespace laterali
@@ -486,13 +484,13 @@ def normalize_line(line):
     if not line:
         return None
         
-    # 1. Normalizza gli spazi interni (es. "def  func" diventa "def func")
-    line = re.sub(r'\s+', ' ', line)
+    # Rimuove tutti gli spazi e caratteri invisibili (es. Zero-width space)
+    line = re.sub(r'[\s\u200B-\u200D\uFEFF]+', '', line)
     
-    # 2. Rimuove gli spazi attorno a punteggiatura e operatori comuni
-    # Caratteri inclusi: [ ] ( ) { } , : ; = < > | & + - * / ! ?
-    line = re.sub(r'\s*([\[\]\(\)\{\},:;=\|<>\+\-\*/!?])\s*', r'\1', line)
-    
+    # Ri-controllo nel caso la riga fosse composta solo da caratteri invisibili
+    if not line:
+        return None
+        
     return line
 
 def apply_snippet_fuzzy(file_path, original_block, edit_block, snippet_index="N/A"):
