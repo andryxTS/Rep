@@ -66,3 +66,20 @@ Ricordati di mettere il cursor pointer su ogni link e pulsante o qualsiasi eleme
 Per l'eliminazione di file e cartelle, attieniti a queste due regole:
 1. **Eliminazione sicura (Cestino):** Usa SEMPRE il tag `<delete_file path="path/to/file_or_folder" />` per eliminare file o cartelle standard. Lo script li sposterà in modo sicuro nel cestino di sistema.
 2. **Eliminazione definitiva (Cartelle enormi):** NON usare il tag `<delete_file>` per cartelle gigantesche o profondamente inalberate come `node_modules` o `.next`. Spostarle nel cestino su Windows è troppo lento. Per queste specifiche cartelle usa il tag `<shell>` fornendo il comando per l'eliminazione definitiva: `rd /s /q "nome_cartella"`.
+
+### ☁️ Gestione Variabili d'Ambiente Cloudflare (Type-Checking & Build)
+* **Separazione `cloudflare-env.d.ts`:** Il file `/cloudflare-env.d.ts` generato automaticamente da Wrangler nella root del progetto **deve sempre rimanere ignorato** in `.gitignore` e `.repomixignore` (per evitare continui conflitti su Git). Tuttavia, poiché TypeScript (es. durante la build di Next.js) effettua il type-checking *prima* che Wrangler generi questo file, si verificheranno errori bloccanti su `process.env` o `getCloudflareContext().env`. 
+* **Soluzione Obbligatoria:** Crea (o mantieni) un file separato **`src/cloudflare-env.d.ts`** che estrae solo le interfacce essenziali (`Cloudflare.Env` e l'estensione di `NodeJS.ProcessEnv`). Questo file in `src/` **deve essere tracciato su Git**, garantendo che la build passi con successo in qualsiasi ambiente CI/CD senza dipendere dalla pre-generazione di Wrangler.
+
+### 🗄️ Database & Drizzle ORM (SQLite / D1)
+*   **Eliminazione a cascata e vincoli (ON DELETE):** In Cloudflare D1, la propagazione del `ON DELETE CASCADE` impostata in Drizzle spesso fallisce a causa della natura stateless delle connessioni (il DB solleverà `D1_ERROR: FOREIGN KEY constraint failed`). Quando crei logiche di cancellazione (Server Actions), effettua **sempre l'eliminazione esplicita** dei record figli (es. `await db.delete(children).where(...)`) **prima** di eliminare il record padre.
+ 
+### 💻 Terminale Integrato e Comandi Shell (Windows CMD)
+* **Sintassi Comandi:** L'ambiente locale utilizza il terminale integrato di VS Code su Windows basato sul **Prompt dei comandi classico (cmd.exe)**. Per le operazioni fornite nel tag `<shell>`, **NON** usare cmdlet di PowerShell (es. `Rename-Item`, `Remove-Item`) e **NON** usare comandi Unix (`cp`, `rm`, `mv`). Usa sempre i comandi DOS standard come `ren` (per rinominare), `copy`, `del`, `mkdir` o `rd /s /q`.
+
+### 🔄 Operazioni Sequenziali sui File (File System + Editing)
+* **Blocchi XML Multipli:** Se un task richiede passaggi strettamente sequenziali in cui una fase dipende dall'esito di una precedente (es: prima copiare/rinominare un file tramite `<shell>` e poi modificarlo tramite `<snippet>`), **NON** inserire tutte le istruzioni in un unico blocco `<changes>`. Fornisci l'output dividendo i passaggi in **più blocchi XML separati** (`<changes>...</changes>`). Lo script parser li eseguirà nell'ordine esatto in cui compaiono nel testo, assicurando che le operazioni a file system siano completate prima di tentare la patch del codice.
+
+### 📂 Spostamento, Copia e Ridenominazione File (Shell vs Riscrittura)
+* **Prevenire Riscritture Inutili:** Quando ti viene richiesto di rinominare una rotta, spostare una cartella o duplicare un file, **NON USARE MAI** il tag `<file>` per riscriverne interamente il contenuto nel nuovo percorso. Le riscritture complete (Full Rewrite) sono lente e ad alto rischio di introdurre errori.
+* **Usa piuttost la Shell:** Utilizza i comandi del terminale Windows (`ren`, `move`, `copy`) all'interno del tag `<shell>` per gestire queste operazioni a livello di file system in modo immediato e sicuro a "rischio zero". Se il file necessita anche di modifiche interne (es. aggiornamento import) dopo lo spostamento, usa un blocco `<changes>` successivo per applicare le singole patch tramite `<snippet>`.
