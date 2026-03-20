@@ -908,7 +908,8 @@ def cmd_mod(auto_input=None):
     save_state()
     return True
 
-def cmd_check():
+def cmd_check(strict_mode=False):
+    # --- 1. RICERCA TSC LOCALE ---
     # --- 1. RICERCA TSC LOCALE ---
     local_tsc_unix = os.path.join("node_modules", ".bin", "tsc")
     local_tsc_win = os.path.join("node_modules", ".bin", "tsc.cmd")
@@ -961,24 +962,48 @@ def cmd_check():
             return
 
 # --- 4. ESECUZIONE ANALISI ---
-    print_step("Analisi TypeScript in corso...")
+    # --- 4. ESECUZIONE ANALISI ---
+    print_step(f"Analisi TypeScript{' e Dipendenze (Strict Mode)' if strict_mode else ''} in corso...")
 
     # Rimosso --incremental (che creava cache buggate) e mantenuto l'essenziale
     cmd = f'"{tsc_path}" --noEmit --skipLibCheck --pretty false'
 
     try:
-        # Timeout 60s
-        result = subprocess.run(
-            cmd, shell=True, check=False, text=True, capture_output=True, encoding='utf-8', errors='replace', timeout=60
+        tsc_process = subprocess.Popen(
+            cmd, shell=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8', errors='replace'
         )
+        
+        depcheck_process = None
+        if strict_mode:
+            depcheck_cmd = "pnpm dlx depcheck --json"
+            depcheck_process = subprocess.Popen(
+                depcheck_cmd, shell=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding='utf-8', errors='replace'
+            )
+
+        tsc_stdout, tsc_stderr = tsc_process.communicate(timeout=60)
+        
+        depcheck_missing = {}
+        if strict_mode:
+            dep_stdout, dep_stderr = depcheck_process.communicate(timeout=60)
+            try:
+                import json
+                json_match = re.search(r'\{.*\}', dep_stdout, re.DOTALL)
+                if json_match:
+                    dep_data = json.loads(json_match.group(0))
+                    depcheck_missing = dep_data.get("missing", {})
+            except Exception as e:
+                print_warn(f"Impossibile parsare l'output di depcheck: {e}")
+
     except subprocess.TimeoutExpired:
+        try:
+            tsc_process.kill()
+            if depcheck_process:
+                depcheck_process.kill()
+        except: pass
         return print_error("Timeout: il controllo ci sta mettendo troppo.")
     
-    if result.returncode == 0:
-        return print_success("✅ Nessun errore TypeScript rilevato.")
-
     # --- 5. FILTRO E REPORT ---
-    raw_output = result.stdout + "\n" + result.stderr
+    raw_output = (tsc_stdout or "") + "\n" + (tsc_stderr or "")
     lines = raw_output.splitlines()
     
     filtered_errors = []
@@ -1001,6 +1026,17 @@ def cmd_check():
             
             # B. RIMOSSO IL FILTRO RUMORE - Vogliamo vedere tutti gli errori veri!
             filtered_errors.append(line)
+
+    if strict_mode and depcheck_missing:
+        for pkg, files in depcheck_missing.items():
+            for f in files:
+                try:
+                    rel_f = os.path.relpath(f, start=os.getcwd())
+                except:
+                    rel_f = f
+                
+                if not is_ignored(rel_f, ignores, unignores):
+                    filtered_errors.append(f"{rel_f}(1,1): error TS9999: Missing dependency '{pkg}' in package.json")
 
     # REPORT FINALE
     if missing_modules_count > 0:
@@ -1434,11 +1470,15 @@ def main():
     if action == "init": cmd_init()
     elif action == "apply": cmd_apply()
     elif action == "mod": cmd_mod()
-    elif action == "check": cmd_check()
+    elif action == "check":
+        strict_mode = False
+        if len(sys.argv) > 2 and sys.argv[2] in["strict", "build", "deploy"]:
+            strict_mode = True
+        cmd_check(strict_mode=strict_mode)
     elif action == "ignore": cmd_ignore()
     elif action == "new": cmd_new()
     elif action in ["invert", "undo", "annulla", "cancel", "ripristina"]: cmd_invert()
-    elif action in ["best", "bestpractice", "best-practice", "best_practice", "bestpractices", "best-practices", "best_practices"]: cmd_best()
+    elif action in["best", "bestpractice", "best-practice", "best_practice", "bestpractices", "best-practices", "best_practices"]: cmd_best()
 
 if __name__ == "__main__":
     try:
