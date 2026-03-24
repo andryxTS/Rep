@@ -385,7 +385,8 @@ def cmd_init(auto_input=None):
             f.write("node_modules/**\n.git/**\n.next/**\ndist/**\nbuild/**\npackage-lock.json\npnpm-lock.yaml\n**/*.pyc")
     
     # Output diretto nel file temporaneo
-    cmd = f"repomix . --style xml --output {repomix_path}"
+    # Output diretto nel file temporaneo
+    cmd = f"repomix . --style xml --output {repomix_path} --quiet"
     run_command(cmd, capture=False) # Mostra log a video
 
     if not os.path.exists(repomix_path):
@@ -1133,12 +1134,13 @@ def cmd_ignore():
         local_ignore_content_for_prompt = "Al momento non è presente alcun file .repomixignore nel progetto."
 
     # 2. Esecuzione Repomix per ottenere la lista file attuale
+    # 2. Esecuzione Repomix per ottenere la lista file attuale
     print_step("Esecuzione Repomix per analisi struttura...")
     global CURRENT_TEMP_DIR
     CURRENT_TEMP_DIR = setup_temp_dir()
     temp_repomix_out = os.path.join(CURRENT_TEMP_DIR, "structure_check.xml")
     
-    run_command(f"repomix --style xml --output {temp_repomix_out}", capture=False)
+    run_command(f"repomix --style xml --output {temp_repomix_out} --quiet", capture=False)
 
     file_list_str = ""
     if os.path.exists(temp_repomix_out):
@@ -1312,11 +1314,12 @@ def cmd_new():
     print_step("Generazione Repomix aggiornato...")
     
     # Crea repomixignore se non esiste (come in init)
+    # Crea repomixignore se non esiste (come in init)
     if not os.path.exists(REPOMIX_IGNORE):
          with open(REPOMIX_IGNORE, "w") as f:
             f.write("node_modules/**\n.git/**\n.next/**\ndist/**\nbuild/**\npackage-lock.json\npnpm-lock.yaml\n**/*.pyc")
 
-    run_command(f"repomix . --style xml --output {repomix_path}", capture=False)
+    run_command(f"repomix . --style xml --output {repomix_path} --quiet", capture=False)
     
     if not os.path.exists(repomix_path):
         print_error("Repomix fallito.")

@@ -15,17 +15,7 @@ Per favore, riscrivi l'output per applicare le tue correzioni a questi file, ris
 1. **SOURCE OF TRUTH DINAMICA:** Il codice riportato qui sotto è la Verità Assoluta **in questo esatto istante**. Ignora qualsiasi versione precedente tu abbia in memoria. TUTTAVIA, ricorda la regola d'oro: **io applico SEMPRE i tuoi XML**. Se dopo aver letto questo codice tu generi una nuova patch per correggere un errore, e nella stessa conversazione io ti chiedo un'ulteriore correzione su di essa, la nuova "Source of Truth" diventa questo codice *più* la modifica che hai appena generato. Non regredire mai a questo testo originale ignorando le tue stesse modifiche successive.
 2. **DIVIETO DI ALLUCINAZIONE:** Prima di scrivere il tag <original>, devi **trovare letteralmente** quella stringa nel testo qui sotto. Se il codice che vuoi correggere non c'è (perché magari il file è già stato fixato o è diverso da come pensavi), **NON GENERARE LA PATCH** per quel file.
 3. **CHECK PREVENTIVO:** Se noti che il codice contiene già la modifica desiderata (es. il tipo TypeScript è già presente), NON toccare il file e segnalalo semplicemente nel riepilogo.
-4. **COPIA BIT-PER-BIT (ATTENZIONE AGLI SPAZI):** Il contenuto di <original> deve essere un copia-incolla chirurgico. Il parser ignora solo l'indentazione e gli spazi vuoti a inizio/fine riga, ma è **intransigente su tutto il resto**: spazi interni (es. dopo `if`, dopo `:`, tra parentesi), punteggiatura e casing. Se sbagli anche solo uno spazio, il match fallisce.
-5. **ERRORI COMUNI:** Uno degli errori più comuni, per tua natura, è quello di essere impreciso nel riportare gli spazi presenti o non presenti prima delle parentesi quadre "[" laddove il linguaggio di programmazione consente di mettere o omettere lo spazio. Ad esempio:
-    Esempio 1:
-       `const[logId, setLogId] = useState("");`
-       potrebbe esser stato scritto così:
-       `const [logId, setLogId] = useState("");`
-    Esempio 2:
-       `var = [array];`
-       potrebbe esser stato scritto così:
-       `var =[array];`
-    porta attenzione a questi spazi che precedono sì o no, le parentesi quadre, nel file originale e replicale allo stesso modo, perché è il tuo errore più comune; quando sbagli una patch fatti una mappa mentale per ogni riga che prente una parentesi quadra (tipo: questa riga ha lo spazio prima, questa riga non ha lo spazio prima, ecc.)
-6. **PATCH PRECEDENTI GIÀ ESEGUITE:** Occhio anche a questo: potresti pensare che alcune delle patch che mi hai mandato siano fallite, quando magari hanno funzionato e sono state applicate; non importa, l'unica fonte di verità ora è il codice che ti incollo qui sotto, dal quale capirai lo stato attuale dei file e su quello baserai il contenuto dal blocco `<original>`.
+4. **COPIA FEDELE (PUNTEGGIATURA E CASING):** Il contenuto di <original> deve essere un copia-incolla chirurgico. Il parser ignora l'indentazione e gli spazi, ma è **intransigente su tutto il resto**: punteggiatura e casing. Se sbagli una virgola o una maiuscola, il match fallisce.
+5. **PATCH PRECEDENTI GIÀ ESEGUITE:** Occhio anche a questo: potresti pensare che alcune delle patch che mi hai mandato siano fallite, quando magari hanno funzionato e sono state applicate; non importa, l'unica fonte di verità ora è il codice che ti incollo qui sotto, dal quale capirai lo stato attuale dei file e su quello baserai il contenuto dal blocco `<original>`.
 
 Ecco i file aggiornati:

@@ -79,7 +79,7 @@ eslint.config.*
 
 # --- Database & Migrations ---
 prisma/migrations/
-drizzle/
+drizzle*/
 supabase/migrations/
 *.sql
 *.sqlite
