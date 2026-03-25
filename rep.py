@@ -553,73 +553,83 @@ def apply_snippet_fuzzy(file_path, original_block, edit_block, snippet_index="N/
         original_lines = f.readlines()
 
     # 2. Creiamo la mappa "Searchable" del file
-    file_map = []
+    file_map =[]
     for idx, line in enumerate(original_lines):
         norm = normalize_line(line)
         if norm:
             file_map.append((idx, norm))
 
-    # 3. Creiamo la sequenza "Target" dallo snippet originale
     # 3. Creiamo la sequenza "Target" e mappiamo gli offset
     original_lines_raw = original_block.strip('\r\n').splitlines()
-    target_mapping = []
+    target_mapping =[]
     
     for idx, line in enumerate(original_lines_raw):
         norm = normalize_line(line)
         if norm:
             target_mapping.append((idx, norm))
 
-    if not target_mapping:
-        print_warn(f"Lo snippet [{snippet_index}] originale conteneva solo commenti o spazi vuoti.")
-        return False
-
-    target_sequence = [item[1] for item in target_mapping]
-    target_start_offset = target_mapping[0][0]
-    target_end_offset = target_mapping[-1][0]
-
-    # 4. Algoritmo di ricerca della sequenza (Sliding Window)
     match_found = False
-    start_real_index = -1
-    end_real_index = -1
     true_start_index = -1
     true_end_index = -1
-    
-    n_file = len(file_map)
-    n_target = len(target_sequence)
 
-    for i in range(n_file - n_target + 1):
-        window = [item[1] for item in file_map[i : i + n_target]]
-        if window == target_sequence:
-            start_real_index = file_map[i][0]
-            end_real_index = file_map[i + n_target - 1][0]
+    if not target_mapping:
+        if not original_lines_raw:
+            print_warn(f"Lo snippet[{snippet_index}] originale è vuoto.")
+            return False
             
-            # Calcolo espansione per includere commenti/spazi
-            pot_true_start = start_real_index - target_start_offset
-            pot_true_end = end_real_index + (len(original_lines_raw) - 1 - target_end_offset)
-            
-            # Sicurezza: Bounds check
-            if pot_true_start < 0 or pot_true_end >= len(original_lines):
-                continue
+        n_raw = len(original_lines_raw)
+        n_file_lines = len(original_lines)
+        
+        for i in range(n_file_lines - n_raw + 1):
+            window = original_lines[i : i + n_raw]
+            if all(window[j].strip() == original_lines_raw[j].strip() for j in range(n_raw)):
+                true_start_index = i
+                true_end_index = i + n_raw - 1
+                match_found = True
+                break
                 
-            # Sicurezza: Verifica che le righe espanse siano effettivamente ignorabili (commenti/spazi)
-            valid_expansion = True
-            for j in range(pot_true_start, start_real_index):
-                if normalize_line(original_lines[j]) is not None:
-                    valid_expansion = False
-                    break
-            for j in range(end_real_index + 1, pot_true_end + 1):
-                if normalize_line(original_lines[j]) is not None:
-                    valid_expansion = False
-                    break
+    else:
+        target_sequence = [item[1] for item in target_mapping]
+        target_start_offset = target_mapping[0][0]
+        target_end_offset = target_mapping[-1][0]
+
+        # 4. Algoritmo di ricerca della sequenza (Sliding Window)
+        n_file = len(file_map)
+        n_target = len(target_sequence)
+
+        for i in range(n_file - n_target + 1):
+            window = [item[1] for item in file_map[i : i + n_target]]
+            if window == target_sequence:
+                start_real_index = file_map[i][0]
+                end_real_index = file_map[i + n_target - 1][0]
+                
+                # Calcolo espansione per includere commenti/spazi
+                pot_true_start = start_real_index - target_start_offset
+                pot_true_end = end_real_index + (len(original_lines_raw) - 1 - target_end_offset)
+                
+                # Sicurezza: Bounds check
+                if pot_true_start < 0 or pot_true_end >= len(original_lines):
+                    continue
                     
-            if not valid_expansion:
-                continue # Le estremità contengono logica inattesa, prosegue a cercare un match esatto
-                
-            # Match confermato e sicuro
-            true_start_index = pot_true_start
-            true_end_index = pot_true_end
-            match_found = True
-            break
+                # Sicurezza: Verifica che le righe espanse siano effettivamente ignorabili (commenti/spazi)
+                valid_expansion = True
+                for j in range(pot_true_start, start_real_index):
+                    if normalize_line(original_lines[j]) is not None:
+                        valid_expansion = False
+                        break
+                for j in range(end_real_index + 1, pot_true_end + 1):
+                    if normalize_line(original_lines[j]) is not None:
+                        valid_expansion = False
+                        break
+                        
+                if not valid_expansion:
+                    continue # Le estremità contengono logica inattesa, prosegue a cercare un match esatto
+                    
+                # Match confermato e sicuro
+                true_start_index = pot_true_start
+                true_end_index = pot_true_end
+                match_found = True
+                break
 
     if match_found:
         # 1. Recuperiamo l'indentazione originale della prima riga FISICA sostituita
@@ -661,12 +671,11 @@ def apply_snippet_fuzzy(file_path, original_block, edit_block, snippet_index="N/
         with open(file_path, 'w', encoding='utf-8') as f:
             f.writelines(original_lines)
             
-        print(f"✅ Snippet [{snippet_index}] applicato a: {file_path}")
+        print(f"✅ Snippet[{snippet_index}] applicato a: {file_path}")
         return True
     
     else:
         print_warn(f"Lo snippet[{snippet_index}] originale non coincide: {file_path}")
-
         return False
 
 # --- HELPER PER GESTIONE IGNORE ---
