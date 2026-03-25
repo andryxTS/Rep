@@ -416,17 +416,6 @@ def cmd_init(auto_input=None, compress_mode=False):
         print_step("Input acquisito automaticamente dal report errori.")
     else:
         user_input = get_multiline_input("Descrivi l'obiettivo delle modifiche")
-        
-    if compress_mode:
-        user_input += (
-            "\n\n**AVVISO DI SISTEMA:**\n"
-            "Il codebase fornito in allegato è stato generato in **modalità compressa** per risparmiare token. "
-            "Se per effettuare l'analisi o per procedere con le modifiche ti serve consultare la versione completa e non compressa di uno o più file specifici, "
-            "inserisci ALLA FINE del tuo messaggio il seguente blocco di codice (esattamente con 4 backtick e formato batch) per richiederli:\n\n"
-            "````batch\n"
-            "repomix --include path_file_1,path_file_2,path_file_3\n"
-            "````"
-        )
     
     with open(PROMPT_ANALYSIS_FILE, "r", encoding="utf-8") as f: template = f.read()
     with open(PROMPT_BEST_PRACTICE_FILE, "r", encoding="utf-8") as f: best_practice_content = f.read()
