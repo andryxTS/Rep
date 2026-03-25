@@ -318,6 +318,18 @@ def wait_for_enter(prompt_text=""):
         except KeyboardInterrupt:
             cleanup_and_exit()
 
+def extract_repomix_include(text):
+    """Cerca la richiesta dell'LLM di espandere file compressi."""
+    if not text: return None
+    match = re.search(r'repomix\s+--include\s+([^\s`\n]+)', text)
+    if match:
+        paths = match.group(1).strip()
+        # Esclude l'esempio letterale presente nel prompt
+        if "path_file_1,path_file_2" in paths:
+            return None
+        return paths
+    return None
+
 def clean_code_content(content):
     if not content: return ""
     content = content.strip() # Questo pulisce FUORI dai backtick (sicuro)
@@ -446,6 +458,10 @@ def cmd_init(auto_input=None, compress_mode=False):
     if not feedback_input:
         feedback_input = "OK, fai tu in autonomia le scelte che ritieni più opportune."
 
+    # Intercetta richiesta LLM per file non compressati
+    raw_clipboard = pyperclip.paste()
+    requested_paths = extract_repomix_include(raw_clipboard)
+
     # 6. Pulizia Temp e Step 2
     if os.path.exists(CURRENT_TEMP_DIR): 
         shutil.rmtree(CURRENT_TEMP_DIR, ignore_errors=True)
@@ -465,11 +481,36 @@ def cmd_init(auto_input=None, compress_mode=False):
     final_exec_prompt = final_exec_prompt.replace("{formato_output}", formato_output_content)
     final_exec_prompt = final_exec_prompt.replace("{procedura_scrittura}", procedura_scrittura_content)
     
-    pyperclip.copy(final_exec_prompt)
-    save_state()
-    print_success("✅ Prompt di ESECUZIONE (testo) copiato negli appunti!\n")
+    if requested_paths:
+        print_step(f"Rilevata richiesta LLM per file completi: {requested_paths}")
+        CURRENT_TEMP_DIR = setup_temp_dir()
+        repomix_parziale_path = os.path.join(CURRENT_TEMP_DIR, "repomix-parziale-non-compressato.txt")
+        prompt_path = os.path.join(CURRENT_TEMP_DIR, "PROMPT.md")
+        
+        with open(prompt_path, "w", encoding="utf-8") as f:
+            f.write(final_exec_prompt)
+            
+        cmd = f'repomix --include "{requested_paths}" --style xml --output "{repomix_parziale_path}" --quiet'
+        run_command(cmd, capture=False)
+        
+        files_to_copy = [prompt_path]
+        if os.path.exists(repomix_parziale_path):
+            files_to_copy.append(repomix_parziale_path)
+            
+        copied = copy_files_to_clipboard_os(files_to_copy)
+        save_state()
+        if copied:
+            print_success("✅ PROMPT.md e file Parziale copiati negli appunti come file!")
+            print("👉 1. Vai nella chat e premi CTRL+V (Incolla i due file).")
+        else:
+            open_folder(CURRENT_TEMP_DIR)
+            print_warn("Trascina i due file generati nella chat.")
+    else:
+        pyperclip.copy(final_exec_prompt)
+        save_state()
+        print_success("✅ Prompt di ESECUZIONE (testo) copiato negli appunti!\n")
+        print("👉 1. Vai nella chat e premi CTRL+V, quindi invia il prompt.")
 
-    print("👉 1. Vai nella chat e premi CTRL+V, quindi invia il prompt.")
     print(f"{Fore.YELLOW}👉 2. Quando hai ricevuto l'XML di risposta, COPIALO e premi INVIO qui per applicarlo.{Style.RESET_ALL}")
     wait_for_enter()
     cmd_apply()
@@ -729,9 +770,29 @@ def cmd_apply():
         match = re.search(tag_open + r'(.*?)' + tag_close, raw_content, re.DOTALL)
         
         if not match: 
-            print_error(f"Nessun tag {tag_open} trovato.")
+            requested_paths = extract_repomix_include(raw_content)
+            if requested_paths:
+                print_step(f"Rilevata richiesta LLM per file completi: {requested_paths}")
+                global CURRENT_TEMP_DIR
+                CURRENT_TEMP_DIR = setup_temp_dir()
+                repomix_parziale_path = os.path.join(CURRENT_TEMP_DIR, "repomix-parziale-non-compressato.txt")
+                
+                cmd = f'repomix --include "{requested_paths}" --style xml --output "{repomix_parziale_path}" --quiet'
+                run_command(cmd, capture=False)
+                
+                if os.path.exists(repomix_parziale_path):
+                    if copy_files_to_clipboard_os([repomix_parziale_path]):
+                        print_success("✅ File parziale non compressato copiato negli appunti!")
+                        print("👉 Vai nella chat, incollalo (CTRL+V) e attendi la risposta (XML).")
+                    else:
+                        open_folder(CURRENT_TEMP_DIR)
+                        print_warn("Trascina il file generato nella chat.")
+                else:
+                    print_error("Errore durante la generazione del file repomix parziale.")
+            else:
+                print_error(f"Nessun tag {tag_open} trovato.")
         else:
-            try: 
+            try:
                 root = ET.fromstring(f"{tag_open}{match.group(1)}{tag_close}")
                 
                 changes_count = 0
