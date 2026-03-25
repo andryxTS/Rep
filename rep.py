@@ -406,6 +406,10 @@ def cmd_init(auto_input=None, compress_mode=False):
         print_error("Repomix fallito. File non creato.")
         return
 
+    # Sostituisce il blocco iniziale di repomix con il Tree personalizzato
+    tree_str = generate_project_tree()
+    patch_repomix_with_tree(repomix_path, tree_str)
+
     # 3. Input Utente e Creazione Prompt File
     if auto_input:
         user_input = auto_input
@@ -495,6 +499,8 @@ def cmd_init(auto_input=None, compress_mode=False):
         
         files_to_copy = [prompt_path]
         if os.path.exists(repomix_parziale_path):
+            tree_str = generate_project_tree()
+            patch_repomix_with_tree(repomix_parziale_path, tree_str)
             files_to_copy.append(repomix_parziale_path)
             
         copied = copy_files_to_clipboard_os(files_to_copy)
@@ -760,6 +766,126 @@ def get_file_hashes():
 def save_state():
     with open(STATE_FILE, "w") as f: json.dump(get_file_hashes(), f)
 
+# --- TREE GENERATOR ---
+def generate_project_tree():
+    sys_ignores = {".git", "node_modules", ".next", ".open-next", "dist", "build", "out", ".rep_temp", "__pycache__", ".venv", "venv", ".wrangler", ".idea", ".vscode"}
+    sys_unignores = set()
+    
+    if os.path.exists(".gitignore"):
+        try:
+            with open(".gitignore", "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        if line.startswith('!'): sys_unignores.add(line[1:])
+                        else: sys_ignores.add(line)
+        except: pass
+
+    repo_ignores = set()
+    repo_unignores = set()
+    
+    for ignore_file in[GLOBAL_IGNORE_FILE, REPOMIX_IGNORE]:
+        if os.path.exists(ignore_file):
+            try:
+                with open(ignore_file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#'):
+                            if line.startswith('!'): repo_unignores.add(line[1:])
+                            else: repo_ignores.add(line)
+            except: pass
+
+    tree_lines =[]
+    
+    def is_sys_ignored(path, name):
+        path = os.path.normpath(path)
+        if path.startswith("." + os.sep): path = path[2:]
+        for p in sys_unignores:
+            if match_pattern(path, name, p): return False
+        for p in sys_ignores:
+            if match_pattern(path, name, p): return True
+        return False
+
+    def is_repo_ignored(path, name):
+        path = os.path.normpath(path)
+        if path.startswith("." + os.sep): path = path[2:]
+        for p in repo_unignores:
+            if match_pattern(path, name, p): return False
+        for p in repo_ignores:
+            if match_pattern(path, name, p): return True
+        return False
+
+    def walk(current_dir, prefix="", parent_omitted=False):
+        try:
+            entries = list(os.scandir(current_dir))
+        except PermissionError:
+            return
+
+        valid_entries =[]
+        for e in entries:
+            rel_path = os.path.relpath(e.path, start=".")
+            if not is_sys_ignored(rel_path, e.name):
+                valid_entries.append(e)
+                
+        valid_entries.sort(key=lambda x: (not x.is_dir(), x.name.lower()))
+        
+        count = len(valid_entries)
+        for i, e in enumerate(valid_entries):
+            is_last = (i == count - 1)
+            connector = "└── " if is_last else "├── "
+            
+            rel_path = os.path.relpath(e.path, start=".")
+            
+            is_omitted = False
+            currently_omitted = parent_omitted
+            
+            if not parent_omitted and is_repo_ignored(rel_path, e.name):
+                is_omitted = True
+                currently_omitted = True
+                
+            omit_label = " OMIT" if is_omitted else ""
+            tree_lines.append(f"{prefix}{connector}{e.name}{'/' if e.is_dir() else ''}{omit_label}")
+            
+            if e.is_dir():
+                ext = "    " if is_last else "│   "
+                walk(e.path, prefix + ext, currently_omitted)
+
+    project_name = os.path.basename(os.path.abspath("."))
+    tree_lines.append(f"{project_name}/")
+    walk(".")
+    
+    tree_str = "\n".join(tree_lines)
+    
+    print(f"\n{Fore.CYAN}--- PROJECT TREE ---{Style.RESET_ALL}")
+    print(tree_str)
+    print(f"{Fore.CYAN}--------------------{Style.RESET_ALL}\n")
+    
+    return tree_str
+
+def patch_repomix_with_tree(filepath, tree_str):
+    if not os.path.exists(filepath): return
+    
+    with open(filepath, "r", encoding="utf-8") as f:
+        content = f.read()
+        
+    files_idx = content.find("<files>")
+    if files_idx != -1:
+        files_content = content[files_idx:]
+        new_content = (
+            "<project_tree>\n"
+            "Questa e' la struttura completa del progetto (esclusi file ignorati da .gitignore e build folder).\n"
+            "Usa questo tree per comprendere l'architettura anche per i file il cui contenuto e' stato omesso per risparmiare token.\n"
+            "Nota: Le cartelle e i file contrassegnati con OMIT sono presenti nel progetto ma il loro contenuto e' stato omesso nel repomix.\n"
+            "<![CDATA[\n"
+            f"{tree_str}\n"
+            "]]>\n"
+            "</project_tree>\n\n"
+            f"{files_content}"
+        )
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(new_content)
+
+
 def cmd_apply():
     while True:
         print_step("Analisi Clipboard XML...")
@@ -781,6 +907,9 @@ def cmd_apply():
                 run_command(cmd, capture=False)
                 
                 if os.path.exists(repomix_parziale_path):
+                    tree_str = generate_project_tree()
+                    patch_repomix_with_tree(repomix_parziale_path, tree_str)
+                    
                     if copy_files_to_clipboard_os([repomix_parziale_path]):
                         print_success("✅ File parziale non compressato copiato negli appunti!")
                         print("👉 Vai nella chat, incollalo (CTRL+V) e attendi la risposta (XML).")
@@ -1411,6 +1540,11 @@ def cmd_new():
     if not os.path.exists(repomix_path):
         print_error("Repomix fallito.")
         return
+
+    tree_str = generate_project_tree()
+    patch_repomix_with_tree(repomix_path, tree_str)
+
+    # I file sono garantiti da ensure_prompts_exist()
 
     # I file sono garantiti da ensure_prompts_exist()
     with open(PROMPT_FORMATO_OUTPUT, "r", encoding="utf-8") as f: 
