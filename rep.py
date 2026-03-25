@@ -573,20 +573,29 @@ def apply_snippet_fuzzy(file_path, original_block, edit_block, snippet_index="N/
             file_map.append((idx, norm))
 
     # 3. Creiamo la sequenza "Target" dallo snippet originale
-    target_sequence = []
-    for line in original_block.splitlines():
+    # 3. Creiamo la sequenza "Target" e mappiamo gli offset
+    original_lines_raw = original_block.strip('\r\n').splitlines()
+    target_mapping = []
+    
+    for idx, line in enumerate(original_lines_raw):
         norm = normalize_line(line)
         if norm:
-            target_sequence.append(norm)
+            target_mapping.append((idx, norm))
 
-    if not target_sequence:
+    if not target_mapping:
         print_warn(f"Lo snippet [{snippet_index}] originale conteneva solo commenti o spazi vuoti.")
         return False
+
+    target_sequence = [item[1] for item in target_mapping]
+    target_start_offset = target_mapping[0][0]
+    target_end_offset = target_mapping[-1][0]
 
     # 4. Algoritmo di ricerca della sequenza (Sliding Window)
     match_found = False
     start_real_index = -1
     end_real_index = -1
+    true_start_index = -1
+    true_end_index = -1
     
     n_file = len(file_map)
     n_target = len(target_sequence)
@@ -596,12 +605,38 @@ def apply_snippet_fuzzy(file_path, original_block, edit_block, snippet_index="N/
         if window == target_sequence:
             start_real_index = file_map[i][0]
             end_real_index = file_map[i + n_target - 1][0]
+            
+            # Calcolo espansione per includere commenti/spazi
+            pot_true_start = start_real_index - target_start_offset
+            pot_true_end = end_real_index + (len(original_lines_raw) - 1 - target_end_offset)
+            
+            # Sicurezza: Bounds check
+            if pot_true_start < 0 or pot_true_end >= len(original_lines):
+                continue
+                
+            # Sicurezza: Verifica che le righe espanse siano effettivamente ignorabili (commenti/spazi)
+            valid_expansion = True
+            for j in range(pot_true_start, start_real_index):
+                if normalize_line(original_lines[j]) is not None:
+                    valid_expansion = False
+                    break
+            for j in range(end_real_index + 1, pot_true_end + 1):
+                if normalize_line(original_lines[j]) is not None:
+                    valid_expansion = False
+                    break
+                    
+            if not valid_expansion:
+                continue # Le estremità contengono logica inattesa, prosegue a cercare un match esatto
+                
+            # Match confermato e sicuro
+            true_start_index = pot_true_start
+            true_end_index = pot_true_end
             match_found = True
             break
 
     if match_found:
-        # 1. Recuperiamo l'indentazione originale della prima riga
-        first_orig_line = original_lines[start_real_index]
+        # 1. Recuperiamo l'indentazione originale della prima riga FISICA sostituita
+        first_orig_line = original_lines[true_start_index]
         indent_match = re.match(r"^\s*", first_orig_line)
         original_indent = indent_match.group(0) if indent_match else ""
 
@@ -620,20 +655,20 @@ def apply_snippet_fuzzy(file_path, original_block, edit_block, snippet_index="N/
             last_line_content = edit_lines[-1]
             
             # Verifichiamo se il blocco sostituito tocca la fine fisica del file
-            is_eof = (end_real_index == len(original_lines) - 1)
+            is_eof = (true_end_index == len(original_lines) - 1)
 
             # Logica "Best Practice": Se c'era prima o se siamo alla fine, aggiungi \n
-            if original_lines[end_real_index].endswith('\n') or is_eof:
+            if original_lines[true_end_index].endswith('\n') or is_eof:
                 new_segment.append(last_line_content + '\n')
             else:
                 new_segment.append(last_line_content)
 
             # 6. Sostituzione effettiva (ORA INDENTATA CORRETTAMENTE)
-            original_lines[start_real_index : end_real_index + 1] = new_segment
+            original_lines[true_start_index : true_end_index + 1] = new_segment
 
         else:
             # Gestione cancellazione: se edit_lines è vuoto, rimuoviamo le righe originali
-            del original_lines[start_real_index : end_real_index + 1]
+            del original_lines[true_start_index : true_end_index + 1]
 
         # Scrittura su disco (Dentro if match_found, ma fuori dalla logica di edit)
         with open(file_path, 'w', encoding='utf-8') as f:
