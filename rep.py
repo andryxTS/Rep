@@ -819,13 +819,27 @@ def cmd_apply():
                         choice = "1"
 
                     # --- GESTIONE ESECUZIONE ---
+                    # --- GESTIONE ESECUZIONE ---
                     if choice == "" or choice == "1":
                         if shell_commands:
-                            print_step("Esecuzione comandi...")
-                            for cmd in shell_commands:
-                                print(f"> {cmd}")
-                                # check=False permette di continuare anche se un comando da warning
-                                subprocess.run(cmd, shell=True, check=False)
+                            print_step("Esecuzione comandi in batch (sessione unificata)...")
+                            fd, bat_path = tempfile.mkstemp(suffix=".bat", text=True)
+                            os.close(fd)
+                            try:
+                                with open(bat_path, "w", encoding="utf-8") as f:
+                                    f.write("@echo off\n")
+                                    # chcp 65001 serve a gestire correttamente gli accenti/caratteri speciali nel cmd
+                                    f.write("chcp 65001 >nul\n")
+                                    for cmd in shell_commands:
+                                        # Escape per visualizzare correttamente i comandi con l'echo
+                                        safe_cmd = cmd.replace('>', '^>').replace('<', '^<').replace('|', '^|').replace('&', '^&')
+                                        f.write(f"echo ^> {safe_cmd}\n")
+                                        f.write(f"{cmd}\n")
+                                subprocess.run(bat_path, shell=True, check=False)
+                            finally:
+                                if os.path.exists(bat_path):
+                                    try: os.remove(bat_path)
+                                    except: pass
                         else:
                             print_warn("Nessun comando da eseguire.")
                             
