@@ -331,7 +331,7 @@ def clean_code_content(content):
 
 # --- CORE FUNCTIONS ---
 
-def cmd_init(auto_input=None):
+def cmd_init(auto_input=None, compress_mode=False):
     ensure_prompts_exist()
 
     # --- Controllo presenza RepomixIgnore ---
@@ -385,8 +385,9 @@ def cmd_init(auto_input=None):
             f.write("node_modules/**\n.git/**\n.next/**\ndist/**\nbuild/**\npackage-lock.json\npnpm-lock.yaml\n**/*.pyc")
     
     # Output diretto nel file temporaneo
-    # Output diretto nel file temporaneo
     cmd = f"repomix . --style xml --output {repomix_path} --quiet"
+    if compress_mode:
+        cmd += " --compress"
     run_command(cmd, capture=False) # Mostra log a video
 
     if not os.path.exists(repomix_path):
@@ -399,6 +400,17 @@ def cmd_init(auto_input=None):
         print_step("Input acquisito automaticamente dal report errori.")
     else:
         user_input = get_multiline_input("Descrivi l'obiettivo delle modifiche")
+        
+    if compress_mode:
+        user_input += (
+            "\n\n**AVVISO DI SISTEMA:**\n"
+            "Il codebase fornito in allegato è stato generato in **modalità compressa** per risparmiare token. "
+            "Se per effettuare l'analisi o per procedere con le modifiche ti serve consultare la versione completa e non compressa di uno o più file specifici, "
+            "inserisci ALLA FINE del tuo messaggio il seguente blocco di codice (esattamente con 4 backtick e formato batch) per richiederli:\n\n"
+            "````batch\n"
+            "repomix --include path_file_1,path_file_2,path_file_3\n"
+            "````"
+        )
     
     with open(PROMPT_ANALYSIS_FILE, "r", encoding="utf-8") as f: template = f.read()
     with open(PROMPT_BEST_PRACTICE_FILE, "r", encoding="utf-8") as f: best_practice_content = f.read()
@@ -1484,7 +1496,9 @@ def cmd_best():
 def main():
     if len(sys.argv) < 2: cmd_apply()
     action = sys.argv[1]
-    if action == "init": cmd_init()
+    if action == "init":
+        compress_mode = len(sys.argv) > 2 and sys.argv[2] in ["comp", "compress"]
+        cmd_init(compress_mode=compress_mode)
     elif action == "apply": cmd_apply()
     elif action == "mod": cmd_mod()
     elif action == "check":
