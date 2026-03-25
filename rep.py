@@ -488,8 +488,6 @@ def cmd_init(auto_input=None, compress_mode=False):
         
         files_to_copy = [prompt_path]
         if os.path.exists(repomix_parziale_path):
-            tree_str = generate_project_tree()
-            patch_repomix_with_tree(repomix_parziale_path, tree_str)
             files_to_copy.append(repomix_parziale_path)
             
         copied = copy_files_to_clipboard_os(files_to_copy)
@@ -931,9 +929,6 @@ def cmd_apply():
                 run_command(cmd, capture=False)
                 
                 if os.path.exists(repomix_parziale_path):
-                    tree_str = generate_project_tree()
-                    patch_repomix_with_tree(repomix_parziale_path, tree_str)
-                    
                     if copy_files_to_clipboard_os([repomix_parziale_path]):
                         print_success("✅ File parziale non compressato copiato negli appunti!")
                         print("👉 Vai nella chat, incollalo (CTRL+V) e attendi la risposta (XML).")
