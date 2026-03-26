@@ -80,3 +80,8 @@ Per l'eliminazione di file e cartelle, attieniti a queste due regole:
 
 ### 🗄️ Limiti Variabili SQL in Cloudflare D1 (Batching)
 * **Prevenire `SQLITE_ERROR: too many SQL variables`**: Quando devi inserire massivamente multipli record in una tabella D1 usando Drizzle ORM, **NON USARE MAI** l'inserimento multi-valore passandogli direttamente l'array di oggetti (`await db.insert(table).values(array)`). SQLite ha limiti rigorosi per le variabili in una singola query. Invece, cicla i dati e crea un array di statement individuali e inviali usando **`db.batch(array_di_statements)`**, chunkando l'array in sezioni da 100 per non eccedere le limitazioni per-batch imposte da Cloudflare.
+
+
+### ☁️ Cloudflare R2 & Crash Miniflare (false == true)
+* **No Node.js Buffer:** Quando carichi file su Cloudflare R2 tramite `env.BUCKET.put()`, **NON USARE MAI** `Buffer.from(...)`. In ambiente di sviluppo (Miniflare/workerd), passare un oggetto Buffer nativo di Node.js manda in crash irreparabile il motore C++ sottostante restituendo l'errore fatale `failed: false == true`.
+* **Soluzione:** Usa sempre API standard del Web. Se hai una stringa passala direttamente. Se hai un Base64, convertilo usando `atob()` e mappalo in un `Uint8Array` passandogli poi `.buffer` (l'ArrayBuffer nativo).

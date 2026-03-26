@@ -1228,8 +1228,16 @@ def cmd_check(strict_mode=False):
     # --- 4. ESECUZIONE ANALISI ---
     print_step(f"Analisi TypeScript{' e Dipendenze (Strict Mode)' if strict_mode else ''} in corso...")
 
-    # Rimosso --incremental (che creava cache buggate) e mantenuto l'essenziale
-    cmd = f'"{tsc_path}" --noEmit --skipLibCheck --pretty false'
+    # Pulizia hard cache tsbuildinfo per cold start check
+    for f in os.listdir("."):
+        if f.endswith(".tsbuildinfo"):
+            try:
+                os.remove(f)
+            except Exception:
+                pass
+
+    # Forza disattivazione incrementale ignorando il tsconfig.json
+    cmd = f'"{tsc_path}" --noEmit --skipLibCheck --pretty false --incremental false'
 
     try:
         tsc_process = subprocess.Popen(
