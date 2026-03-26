@@ -1236,8 +1236,14 @@ def cmd_check(strict_mode=False):
             except Exception:
                 pass
 
-    # Forza disattivazione incrementale ignorando il tsconfig.json
-    cmd = f'"{tsc_path}" --noEmit --skipLibCheck --pretty false --incremental false'
+    # Seleziona l'esecutore corretto basandosi sul package manager (risolve problemi di percorsi/crash di tsc.cmd)
+    if os.path.exists("pnpm-lock.yaml"): base_cmd = "pnpm exec tsc"
+    elif os.path.exists("yarn.lock"): base_cmd = "yarn tsc"
+    elif os.path.exists("bun.lockb"): base_cmd = "bunx tsc"
+    else: base_cmd = "npx tsc"
+
+    # Ripristinato --skipLibCheck e --pretty false, MA usiamo pnpm/npx per garantire l'esecuzione corretta e identica al manuale.
+    cmd = f'{base_cmd} --noEmit --incremental false --skipLibCheck --pretty false'
 
     try:
         tsc_process = subprocess.Popen(
@@ -1252,6 +1258,7 @@ def cmd_check(strict_mode=False):
             )
 
         tsc_stdout, tsc_stderr = tsc_process.communicate(timeout=60)
+        tsc_returncode = tsc_process.returncode
         
         depcheck_missing = {}
         if strict_mode:
@@ -1281,22 +1288,44 @@ def cmd_check(strict_mode=False):
     missing_modules_count = 0
     ignores, unignores = load_ignore_patterns()
     
-    # Regex per catturare "path/to/file.ts(10,20): error TSxxxx: ..."
-    error_pattern = re.compile(r'^([^\s(].+?)\(\d+,\d+\):\s+error\s+(TS\d+):(.+)')
+    # Regex ultra-resiliente per formati pretty/non-pretty e localizzazioni (con tolleranza per spazi)
+    error_pattern = re.compile(r'^([^\s].+?)(?:\(\d+,\s*\d+\):?|:\d+:\d+\s+-?).*?(TS\d+)\s*:(.+)')
+    # Regex completa per rimuovere TUTTI i codici ANSI, inclusi i link cliccabili OSC 8 (\x1b]8;;...\x1b\) generati da TypeScript
+    ansi_escape = re.compile(r'\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\].*?(?:\x1b\\|\x07))')
+
+    current_error_valid = False
 
     for line in lines:
-        line = line.strip()
-        match = error_pattern.match(line)
+        # Pulisce la riga dai colori del terminale che sfalsano la regex
+        line_clean = ansi_escape.sub('', line).strip()
+        if not line_clean:
+            continue
+            
+        match = error_pattern.match(line_clean)
         
         if match:
             file_path = match.group(1)
             
             # A. FILTRO IGNORE
             if is_ignored(file_path, ignores, unignores):
+                current_error_valid = False
                 continue
             
-            # B. RIMOSSO IL FILTRO RUMORE - Vogliamo vedere tutti gli errori veri!
-            filtered_errors.append(line)
+            # B. Errore valido
+            current_error_valid = True
+            filtered_errors.append(line_clean)
+        elif current_error_valid:
+            # È una riga di continuazione di un errore valido (es. dettagli sul mismatch dei tipi)
+            filtered_errors.append("  " + line_clean)
+
+    # Difesa contro crash silenziosi (es. comando non trovato, execution policy o file non parsati)
+    if not filtered_errors and tsc_returncode != 0:
+        err_msg = ansi_escape.sub('', raw_output).strip() if raw_output.strip() else "Nessun output registrato (Processo terminato in modo anomalo o non trovato)."
+        if "TS" in err_msg:
+            # Fallback totale a prova di bomba: la regex ha fallito ma ci sono errori TS veri. Diamo in pasto tutto all'utente/LLM!
+            filtered_errors.extend([line for line in err_msg.splitlines() if line.strip()])
+        else:
+            filtered_errors.append(f"ERRORE DI ESECUZIONE TS: Il comando TypeScript ha fallito in modo anomalo.\nOutput raw:\n{err_msg}")
 
     if strict_mode and depcheck_missing:
         for pkg, files in depcheck_missing.items():
@@ -1327,16 +1356,14 @@ def cmd_check(strict_mode=False):
             "3. **VERIFICA REALE:** Prima di proporre una soluzione, verifica se il codice nel contesto contiene già la fix (il report tsc potrebbe essere disallineato). Se il codice ti sembra già corretto, dimmelo.\n\n"
             "**PROCEDURA:**\n"
             "- Analizza l'errore confrontandolo con il codice reale.\n"
-            "- Proponimi delle soluzioni.\n"
             "- Nell'eseguire le correzioni userai il formato XML che ti indicherò.\n"
             "- **NOTA:** Ignora il tag `<shell>` che ti scriverò nel formato output, per il controllo del typescript gestisco io l'esecuzione dei comandi."
         )
         prompt_message = (
             "Ho eseguito un controllo del typescript con tsc e ho ottenuto questi errori:\n"
             f"```typescript\n{ts_report}\n```\n\n"
-            "Proponimi delle soluzioni, chiedimi prima il feedback se c'è da prendere delle decisioni, "
-            "e nell'eseguire le correzioni effettive usa il formato di output XML già concordato "
-            "(omettendo i comandi <shell>)."
+            "Correggili usando il formato di output XML già concordato "
+            "(omettendo i comandi <shell>, mi arrangio io rifare il controllo tsc)."
         )
 
         print_error(f"❌ Trovati {len(filtered_errors)} errori logici nel codice sorgente.")
