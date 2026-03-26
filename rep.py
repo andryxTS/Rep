@@ -330,6 +330,26 @@ def extract_repomix_include(text):
         return paths
     return None
 
+def generate_partial_xml(paths_str, output_path):
+    """Genera un XML minimale contenente solo i file richiesti, bypassando il repomixignore."""
+    paths =[p.strip() for p in paths_str.split(',') if p.strip()]
+    xml_lines = ["<files>"]
+    for path in paths:
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                xml_lines.append(f'<file path="{path}">\n<![CDATA[\n{content}\n]]>\n</file>')
+            except Exception as e:
+                print_warn(f"Impossibile leggere il file {path}: {e}")
+        else:
+            print_warn(f"Il file richiesto non esiste: {path}")
+    xml_lines.append("</files>")
+    
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(xml_lines))
+    return True
+
 def clean_code_content(content):
     if not content: return ""
     content = content.strip() # Questo pulisce FUORI dai backtick (sicuro)
@@ -483,8 +503,7 @@ def cmd_init(auto_input=None, compress_mode=False):
         with open(prompt_path, "w", encoding="utf-8") as f:
             f.write(final_exec_prompt)
             
-        cmd = f'repomix --include "{requested_paths}" --style xml --output "{repomix_parziale_path}" --quiet'
-        run_command(cmd, capture=False)
+        generate_partial_xml(requested_paths, repomix_parziale_path)
         
         files_to_copy = [prompt_path]
         if os.path.exists(repomix_parziale_path):
@@ -934,8 +953,7 @@ def cmd_apply():
                 CURRENT_TEMP_DIR = setup_temp_dir()
                 repomix_parziale_path = os.path.join(CURRENT_TEMP_DIR, "repomix-parziale-non-compressato.txt")
                 
-                cmd = f'repomix --include "{requested_paths}" --style xml --output "{repomix_parziale_path}" --quiet'
-                run_command(cmd, capture=False)
+                generate_partial_xml(requested_paths, repomix_parziale_path)
                 
                 if os.path.exists(repomix_parziale_path):
                     if copy_files_to_clipboard_os([repomix_parziale_path]):
