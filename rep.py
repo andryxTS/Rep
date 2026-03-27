@@ -925,7 +925,7 @@ def patch_repomix_with_tree(filepath, tree_str):
             "<project_tree>\n"
             "Questa e' la struttura completa del progetto (esclusi file ignorati da .gitignore e build folder).\n"
             "Usa questo tree per comprendere l'architettura anche per i file il cui contenuto e' stato omesso per risparmiare token.\n"
-            "Nota: Le cartelle e i file contrassegnati con OMIT sono presenti nel progetto ma il loro contenuto e' stato omesso nel repomix.\n"
+            "Nota: Le cartelle e i file contrassegnati con OMIT sono presenti nel progetto ma il loro contenuto e' stato omesso nel repomix. Se il progetto e' stato esportato in modalita' compressa, i file presenti potrebbero essere minimizzati. Sentiti libero di richiedere la versione integrale di qualsiasi file ti serva, senza parsimonia.\n"
             "<![CDATA[\n"
             f"{tree_str}\n"
             "]]>\n"
