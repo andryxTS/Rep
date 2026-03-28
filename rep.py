@@ -49,6 +49,7 @@ PROMPT_BEST_PRACTICE_FILE = os.path.join(PROMPTS_DIR, "best_practice.md")
 PROMPT_PROCEDURA_SCRITTURA_FILE = os.path.join(PROMPTS_DIR, "procedura_scrittura.md")
 PROMPT_PROCEDURA_ANALISI_FILE = os.path.join(PROMPTS_DIR, "procedura_analisi.md")
 PROMPT_PATCH_RECOVERY_FILE = os.path.join(PROMPTS_DIR, "patch_recovery.md")
+PROMPT_ANTI_ESCAPE_FILE = os.path.join(PROMPTS_DIR, "anti_escape_quadre.md")
 GLOBAL_IGNORE_FILE = os.path.join(PROMPTS_DIR, ".repomixignore.template")
 
 # --- UTILS SISTEMA ---
@@ -208,7 +209,8 @@ def ensure_prompts_exist():
         PROMPT_BEST_PRACTICE_FILE,
         PROMPT_PROCEDURA_SCRITTURA_FILE,
         PROMPT_PROCEDURA_ANALISI_FILE,
-        PROMPT_PATCH_RECOVERY_FILE
+        PROMPT_PATCH_RECOVERY_FILE,
+        PROMPT_ANTI_ESCAPE_FILE
     ]
     
     missing = [f for f in required_files if not os.path.exists(f)]
@@ -1140,6 +1142,14 @@ def cmd_apply():
 
             except ET.ParseError as e: 
                 print_error(f"Errore XML: {e}")
+                try:
+                    with open(PROMPT_ANTI_ESCAPE_FILE, "r", encoding="utf-8") as f:
+                        recovery_msg = f.read()
+                    pyperclip.copy(recovery_msg)
+                    print_success("✅ Prompt anti-interruzione (spazio tra quadre) copiato negli appunti!")
+                    print("👉 Incollalo nella chat per far correggere il problema all'LLM.")
+                except Exception as ex:
+                    print_warn(f"Impossibile caricare il prompt di recovery: {ex}")
                 print(f"\n{Fore.YELLOW}Premere INVIO per riprovare, ESC per terminare.{Style.RESET_ALL}")
 
         wait_for_enter()
