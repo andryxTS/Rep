@@ -20,7 +20,6 @@ Ti chiederò di effettuare alcune modifiche al mio codebase. Per adesso farai un
 * Dati dinamici: Se trovi collegamenti a CMS (es. Sanity), mantieni l'approccio, evita contenuti hardcoded (eccetto fallback).
 * Installazione pacchetti Node.js: di default usa `pnpm`, NON usare `npm`. Usa npm solo se dall'analisi del mio codice ti accorgi che inequivocabilmente usato npm per quell'app.
 * Se vedi che ci sono database collegati ricordati di includermi i comandi per rendere funzionanti le nuove modifiche (es: generate e migrate).
-* Prevenzione Blocchi WAF di Rete (Troncamento Output): **No Array Fallback in linea:** Non affiancare **MAI** operatori di fallback logico (come l'OR logico o il nullish coalescing) alla sintassi letterale dell'array vuoto o stringhe vuote. I firewall di rete (WAF) tagliano istantaneamente la risposta considerandolo codice offuscato. **Soluzione Sicura:** Per assegnare array vuoti di default, usa sempre la sintassi esplicita del costruttore, ad esempio: `const arr = items ? items : Array()`. Evita categoricamente l'uso delle parentesi quadre vuote di fianco a operatori di assegnazione condizionale.
 * Segui le altre best-practice incluse di seguito, servono a scongiurare e prevenire errori e perdite di tempo. Fai questi controlli in sordina, avvisami e proponimi soluzioni solo se noti delle evidenti criticità:
 
 **SYSTEM PROMPT - BEST PRACTICES**
