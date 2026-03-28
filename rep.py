@@ -1082,7 +1082,11 @@ def cmd_apply():
                                         # Escape per visualizzare correttamente i comandi con l'echo
                                         safe_cmd = cmd.replace('>', '^>').replace('<', '^<').replace('|', '^|').replace('&', '^&')
                                         f.write(f"echo ^> {safe_cmd}\n")
-                                        f.write(f"{cmd}\n")
+                                        
+                                        # Fix per Windows: Aggiunge 'call' davanti agli script batch di Node 
+                                        # altrimenti l'esecuzione del .bat si interrompe in modo anomalo
+                                        exec_cmd = re.sub(r'(^|&&?|\|\|?)\s*(pnpm|npm|npx|yarn|bun)\b', r'\1 call \2', cmd)
+                                        f.write(f"{exec_cmd}\n")
                                 subprocess.run(bat_path, shell=True, check=False)
                             finally:
                                 if os.path.exists(bat_path):
