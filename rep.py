@@ -1195,7 +1195,7 @@ def cmd_mod(auto_input=None):
     save_state()
     return True
 
-def cmd_check(strict_mode=False):
+def cmd_check(strict_mode=True):
     # --- 1. RICERCA TSC LOCALE ---
     # --- 1. RICERCA TSC LOCALE ---
     local_tsc_unix = os.path.join("node_modules", ".bin", "tsc")
@@ -1802,9 +1802,9 @@ def main():
     elif action == "apply": cmd_apply()
     elif action == "mod": cmd_mod()
     elif action == "check":
-        strict_mode = False
-        if len(sys.argv) > 2 and sys.argv[2] in["strict", "build", "deploy"]:
-            strict_mode = True
+        strict_mode = True
+        if len(sys.argv) > 2 and sys.argv[2] in["no-strict", "lasca", "permissiva", "permissivo", "veloce", "fast"]:
+            strict_mode = False
         cmd_check(strict_mode=strict_mode)
     elif action == "ignore": cmd_ignore()
     elif action == "new": cmd_new()
