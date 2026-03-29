@@ -966,6 +966,16 @@ def cmd_apply():
                         print_warn("Trascina il file generato nella chat.")
                 else:
                     print_error("Errore durante la generazione del file repomix parziale.")
+            elif tag_open in raw_content:
+                print_error(f"Trovato tag {tag_open} ma manca la chiusura {tag_close}. Flusso interrotto?")
+                try:
+                    with open(PROMPT_ANTI_ESCAPE_FILE, "r", encoding="utf-8") as f:
+                        recovery_msg = f.read()
+                    pyperclip.copy(recovery_msg)
+                    print("Prompt anti-interruzione (spazio tra quadre) copiato negli appunti!")
+                    print("👉 Incollalo nella chat per far correggere il problema all'LLM.")
+                except Exception as ex:
+                    print_warn(f"Impossibile caricare il prompt di recovery: {ex}")
             else:
                 print_error(f"Nessun tag {tag_open} trovato.")
         else:
