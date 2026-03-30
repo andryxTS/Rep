@@ -307,16 +307,16 @@ def wait_for_enter(prompt_text=""):
             
         @kb.add('enter')
         def _(event):
-            event.app.exit(result=None)
+            event.app.exit(result=event.current_buffer.text)
 
         session = PromptSession(key_bindings=kb)
         try:
-            session.prompt("", multiline=False)
+            return session.prompt("", multiline=False)
         except KeyboardInterrupt:
             cleanup_and_exit()
     else:
         try:
-            input()
+            return input()
         except KeyboardInterrupt:
             cleanup_and_exit()
 
@@ -940,21 +940,37 @@ def patch_repomix_with_tree(filepath, tree_str):
 
 def cmd_apply():
     while True:
-        print_step("Analisi Clipboard XML...")
         raw_content = pyperclip.paste()
         
         if raw_content.strip() == "":
-            print_step("Appunti vuoti rilevati. Avvio scansione file modificati (cmd_mod)...")
+            print_step("Avvio scansione file modificati (cmd_mod)...")
             if cmd_mod(auto_input=""):
-                print(f"{Fore.YELLOW}👉 Incolla il prompt generato nella chat, copia la risposta XML e premi INVIO qui per continuare.{Style.RESET_ALL}")
+                print(f"\n{Fore.YELLOW}👉 1. Il prompt con i file modificati è negli appunti.{Style.RESET_ALL}")
+                print(f"{Fore.YELLOW}👉 2. Incollalo nella chat dell'LLM.{Style.RESET_ALL}")
+                print(f"{Fore.YELLOW}👉 3. Copia la risposta XML dell'LLM.{Style.RESET_ALL}")
+                print(f"{Fore.YELLOW}👉 4. Premi INVIO qui per continuare (scrivi 'mod' per forzare nuova scansione).{Style.RESET_ALL}")
             else:
                 print(f"{Fore.YELLOW}Nessun file modificato. Copia un blocco XML valido e premi INVIO.{Style.RESET_ALL}")
-            wait_for_enter()
+            
+            user_input = wait_for_enter()
+            if user_input and user_input.strip().lower() == "mod":
+                pyperclip.copy("")
+            continue
+
+        if "<modified_files>" in raw_content and "[ATTENZIONE, avviso automatico" in raw_content:
+            print_warn("Gli appunti contengono ancora il prompt generato da cmd_mod.")
+            print(f"{Fore.YELLOW}👉 Devi incollarlo all'LLM, copiare l'XML di risposta e poi premere INVIO qui.{Style.RESET_ALL}")
+            print(f"{Style.DIM}(Se vuoi ignorare questo blocco e forzare una nuova scansione, scrivi 'mod' e premi INVIO){Style.RESET_ALL}")
+            
+            user_input = wait_for_enter()
+            if user_input and user_input.strip().lower() == "mod":
+                pyperclip.copy("")
             continue
             
         tag_open = "<" + "changes>"
-
         tag_close = "</" + "changes>"
+        
+        print_step("Analisi Clipboard XML...")
         match = re.search(tag_open + r'(.*?)' + tag_close, raw_content, re.DOTALL)
         
         if not match: 
@@ -988,6 +1004,7 @@ def cmd_apply():
                     print_warn(f"Impossibile caricare il prompt di recovery: {ex}")
             else:
                 print_error(f"Nessun tag {tag_open} trovato.")
+                print(f"{Style.DIM}(Assicurati di copiare l'XML, oppure scrivi 'mod' e premi INVIO per forzare una scansione modifiche){Style.RESET_ALL}")
         else:
             try:
                 root = ET.fromstring(f"{tag_open}{match.group(1)}{tag_close}")
@@ -1172,7 +1189,9 @@ def cmd_apply():
                     print_warn(f"Impossibile caricare il prompt di recovery: {ex}")
                 print(f"\n{Fore.YELLOW}Premere INVIO per riprovare, ESC per terminare.{Style.RESET_ALL}")
 
-        wait_for_enter()
+        user_input = wait_for_enter()
+        if user_input is not None and user_input.strip().lower() == "mod":
+            pyperclip.copy("") # Svuota gli appunti così al prossimo ciclo parte cmd_mod automaticamente
 
 def cmd_mod(auto_input=None):
     old_hashes = {}
