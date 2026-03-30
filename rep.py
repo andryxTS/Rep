@@ -943,7 +943,17 @@ def cmd_apply():
         print_step("Analisi Clipboard XML...")
         raw_content = pyperclip.paste()
         
+        if raw_content.strip() == "":
+            print_step("Appunti vuoti rilevati. Avvio scansione file modificati (cmd_mod)...")
+            if cmd_mod(auto_input=""):
+                print(f"{Fore.YELLOW}👉 Incolla il prompt generato nella chat, copia la risposta XML e premi INVIO qui per continuare.{Style.RESET_ALL}")
+            else:
+                print(f"{Fore.YELLOW}Nessun file modificato. Copia un blocco XML valido e premi INVIO.{Style.RESET_ALL}")
+            wait_for_enter()
+            continue
+            
         tag_open = "<" + "changes>"
+
         tag_close = "</" + "changes>"
         match = re.search(tag_open + r'(.*?)' + tag_close, raw_content, re.DOTALL)
         
@@ -1179,9 +1189,12 @@ def cmd_mod(auto_input=None):
     print_warn(f"{len(modified)} file modificati localmente.")
     
     # Gestione input automatico o manuale
-    if auto_input:
+    if auto_input is not None:
         req = auto_input
-        print_step("Input acquisito automaticamente dal report errori.")
+        if req:
+            print_step("Input acquisito automaticamente dal report errori.")
+        else:
+            print_step("Generazione automatica report modifiche (senza richiesta specifica).")
     else:
         req = get_multiline_input("Richiesta (OPZIONALE, altrimenti lascia vuoto per ottenere solo l'aggiornamento file modificati):")
 
