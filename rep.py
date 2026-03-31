@@ -907,11 +907,6 @@ def generate_project_tree():
     walk(".")
     
     tree_str = "\n".join(tree_lines)
-    
-    print(f"\n{Fore.CYAN}--- PROJECT TREE ---{Style.RESET_ALL}")
-    print(tree_str)
-    print(f"{Fore.CYAN}--------------------{Style.RESET_ALL}\n")
-    
     return tree_str
 
 def patch_repomix_with_tree(filepath, tree_str):
@@ -939,6 +934,7 @@ def patch_repomix_with_tree(filepath, tree_str):
 
 
 def cmd_apply():
+    deferred_shell_commands = []
     while True:
         raw_content = pyperclip.paste()
         
@@ -1064,81 +1060,19 @@ def cmd_apply():
                         else:
                             print_warn("Aggiunta best practice ignorata.")
 
-                shell_commands = [] # Reset lista comandi
+                current_shell_commands = []
                 shell_node = root.find('shell')
                 if shell_node is not None:
                     raw_cmd = clean_code_content(shell_node.text)
                     if raw_cmd:
-                        # Divide in righe ignorando quelle vuote
-                        shell_commands = [l.strip() for l in raw_cmd.splitlines() if l.strip()]
+                        current_shell_commands = [l.strip() for l in raw_cmd.splitlines() if l.strip()]
 
                 save_state()
-                
-                # --- NUOVO MENU INTERATTIVO SHELL (Lineare) ---
-                if shell_commands:
-                    print(f"\n{Fore.YELLOW}Comandi shell suggeriti:{Style.RESET_ALL}")
-                    for i, cmd in enumerate(shell_commands, 1):
-                        print(f"{Fore.CYAN}{i}.{Style.RESET_ALL} {cmd}")
-                    
-                    print(f"\n{Fore.YELLOW}Scegli un'azione:{Style.RESET_ALL}")
-                    print(f"1) {Fore.GREEN}Esegui{Style.RESET_ALL} (Default)")
-                    print(f"2) {Fore.BLUE}Modifica ed Esegui{Style.RESET_ALL}")
-                    print(f"3) {Fore.RED}Ignora{Style.RESET_ALL}")
-                    
-                    choice = smart_input(f"\nScelta [1]: ").strip()
-                    
-                    # --- GESTIONE MODIFICA ---
-                    if choice == "2":
-                        current_block = "\n".join(shell_commands)
-                        print(f"{Fore.YELLOW}Modifica i comandi (CTRL+INVIO per confermare ed eseguire):{Style.RESET_ALL}")
-                        
-                        # Qui si apre l'editor con il testo precompilato
-                        new_input = get_multiline_input("", default_text=current_block)
-                        
-                        # Aggiorniamo la lista comandi
-                        if new_input.strip():
-                            shell_commands = [l.strip() for l in new_input.splitlines() if l.strip()]
-                        else:
-                            print_warn("Lista comandi svuotata.")
-                            shell_commands = []
-                        
-                        # Forziamo la scelta a "1" per far scattare l'esecuzione subito dopo
-                        choice = "1"
 
-                    # --- GESTIONE ESECUZIONE ---
-                    # --- GESTIONE ESECUZIONE ---
-                    if choice == "" or choice == "1":
-                        if shell_commands:
-                            print_step("Esecuzione comandi in batch (sessione unificata)...")
-                            fd, bat_path = tempfile.mkstemp(suffix=".bat", text=True)
-                            os.close(fd)
-                            try:
-                                with open(bat_path, "w", encoding="utf-8") as f:
-                                    f.write("@echo off\n")
-                                    # chcp 65001 serve a gestire correttamente gli accenti/caratteri speciali nel cmd
-                                    f.write("chcp 65001 >nul\n")
-                                    for cmd in shell_commands:
-                                        # Escape per visualizzare correttamente i comandi con l'echo
-                                        safe_cmd = cmd.replace('>', '^>').replace('<', '^<').replace('|', '^|').replace('&', '^&')
-                                        f.write(f"echo ^> {safe_cmd}\n")
-                                        
-                                        # Fix per Windows: Aggiunge 'call' davanti agli script batch di Node 
-                                        # altrimenti l'esecuzione del .bat si interrompe in modo anomalo
-                                        exec_cmd = re.sub(r'(^|&&?|\|\|?)\s*(pnpm|npm|npx|yarn|bun)\b', r'\1 call \2', cmd)
-                                        f.write(f"{exec_cmd}\n")
-                                subprocess.run(bat_path, shell=True, check=False)
-                            finally:
-                                if os.path.exists(bat_path):
-                                    try: os.remove(bat_path)
-                                    except: pass
-                        else:
-                            print_warn("Nessun comando da eseguire.")
-                            
-                    elif choice == "3":
-                        print_warn("Comandi ignorati.")
-
-                # NUOVO: Gestione fallimenti e generazione prompt di ripristino
                 if failed_snippets:
+                    if current_shell_commands:
+                        deferred_shell_commands.extend(current_shell_commands)
+
                     print()
                     print_error(f"Attenzione: {len(failed_snippets)} snippet non sono stati applicati.")
                     
@@ -1174,6 +1108,70 @@ def cmd_apply():
                     print(f"👉 2. {Fore.YELLOW}COPIA la risposta del chatbot{Style.RESET_ALL} e torna qui.")
                     print(f"\n{Fore.YELLOW}Quando hai copiato la correzione, premi INVIO per applicarla (ESC per uscire).{Style.RESET_ALL}")
                 else:
+                    commands_to_run = []
+                    if deferred_shell_commands:
+                        def norm_shell(cmds):
+                            return "".join(["".join(c.split()) for c in cmds])
+                        
+                        if current_shell_commands:
+                            if norm_shell(deferred_shell_commands) == norm_shell(current_shell_commands):
+                                commands_to_run = current_shell_commands
+                            else:
+                                commands_to_run = deferred_shell_commands + current_shell_commands
+                        else:
+                            commands_to_run = deferred_shell_commands
+                    else:
+                        commands_to_run = current_shell_commands
+
+                    deferred_shell_commands = [] # Reset dopo l'elaborazione
+
+                    if commands_to_run:
+                        print(f"\n{Fore.YELLOW}Comandi shell suggeriti:{Style.RESET_ALL}")
+                        for i, cmd in enumerate(commands_to_run, 1):
+                            print(f"{Fore.CYAN}{i}.{Style.RESET_ALL} {cmd}")
+                        
+                        print(f"\n{Fore.YELLOW}Scegli un'azione:{Style.RESET_ALL}")
+                        print(f"1) {Fore.GREEN}Esegui{Style.RESET_ALL} (Default)")
+                        print(f"2) {Fore.BLUE}Modifica ed Esegui{Style.RESET_ALL}")
+                        print(f"3) {Fore.RED}Ignora{Style.RESET_ALL}")
+                        
+                        choice = smart_input(f"\nScelta [1]: ").strip()
+                        
+                        if choice == "2":
+                            current_block = "\n".join(commands_to_run)
+                            print(f"{Fore.YELLOW}Modifica i comandi (CTRL+INVIO per confermare ed eseguire):{Style.RESET_ALL}")
+                            new_input = get_multiline_input("", default_text=current_block)
+                            if new_input.strip():
+                                commands_to_run = [l.strip() for l in new_input.splitlines() if l.strip()]
+                            else:
+                                print_warn("Lista comandi svuotata.")
+                                commands_to_run = []
+                            choice = "1"
+
+                        if choice == "" or choice == "1":
+                            if commands_to_run:
+                                print_step("Esecuzione comandi in batch (sessione unificata)...")
+                                fd, bat_path = tempfile.mkstemp(suffix=".bat", text=True)
+                                os.close(fd)
+                                try:
+                                    with open(bat_path, "w", encoding="utf-8") as f:
+                                        f.write("@echo off\n")
+                                        f.write("chcp 65001 >nul\n")
+                                        for cmd in commands_to_run:
+                                            safe_cmd = cmd.replace('>', '^>').replace('<', '^<').replace('|', '^|').replace('&', '^&')
+                                            f.write(f"echo ^> {safe_cmd}\n")
+                                            exec_cmd = re.sub(r'(^|&&?|\|\|?)\s*(pnpm|npm|npx|yarn|bun)\b', r'\1 call \2', cmd)
+                                            f.write(f"{exec_cmd}\n")
+                                    subprocess.run(bat_path, shell=True, check=False)
+                                finally:
+                                    if os.path.exists(bat_path):
+                                        try: os.remove(bat_path)
+                                        except: pass
+                            else:
+                                print_warn("Nessun comando da eseguire.")
+                        elif choice == "3":
+                            print_warn("Comandi ignorati.")
+
                     print_success("Tutte le modifiche sono state applicate con successo.")
                     print(f"\n{Fore.YELLOW}Premere INVIO per elaborare un altro blocco XML, ESC per terminare.{Style.RESET_ALL}")
 
