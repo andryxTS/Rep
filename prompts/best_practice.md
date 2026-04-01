@@ -91,3 +91,17 @@ Nelle architetture Serverless, le chiamate agli LLM sono soggette a limiti rigid
 ### 🤖 Modelli LLM e Consapevolezza Temporale
 * **Modelli Obsoleti:** Sii consapevole di essere in un'epoca molto successiva al tuo cut-off di training. I modelli che ricordi come "attuali" (es. gpt-4o-mini, gemini-1.5) sono DEPRECATI. Quelli che consideri "sperimentali" o futuri, o semplicemente non conosci, sono ora lo standard.
 * **Azione:** Non inserire MAI modelli che tu conosci nel codice, perché sicuramente sono obsoleti, **chiedi sempre all'utente** prima di hardcodare, solo lui ti saprà dire quali modelli al momento sono allo stato dell'arte.
+
+
+### ⚡ Ottimizzazione Performance (Effetto Zero-Latency / App Nativa)
+Per garantire transizioni istantanee e azzerare il lag di navigazione in Next.js + Cloudflare Workers, l'AI DEVE applicare proattivamente i seguenti pattern:
+
+* **Auth Istantanea (Supabase):** NON usare MAI `await supabase.auth.getUser()` nel `middleware.ts`, nei `layout.tsx` o nei `page.tsx` per i semplici controlli di sessione. Questo innesca una chiamata HTTP bloccante ai server esterni. Usa SEMPRE `await supabase.auth.getSession()` per estrarre il `session.user` leggendo e decodificando istantaneamente il cookie locale.
+* **Cache in-memory per Permessi (RBAC):** Le funzioni di autorizzazione (es. `checkAdmin()`) che interrogano il database (es. D1) DEVONO:
+  1. Essere avvolte in `cache()` di React (per deduplicare le chiamate nel singolo render).
+  2. Implementare internamente una `Map` globale in memoria con scadenza (es. 60s). Poiché i Cloudflare Workers riutilizzano l'Isolate V8, questo azzera i tempi di query DB nei successivi cambi di rotta.
+* **Pattern SWR (Stale-While-Revalidate) Custom:** Per le tabelle, i form e le dashboard, non forzare l'utente ad attendere query DB sincrone al click.
+  1. Nelle Server Actions, crea varianti `getCached...` che salvano in RAM globale (`Record<string, ...>`) l'ultima risposta del DB per 60 secondi.
+  2. Nei `page.tsx` (Server), chiama le azioni cached e passale come `initialData` ai Client Components.
+  3. Nei Client Components, usa l'`initialData` come stato di partenza (rendering istantaneo) e lancia un `useEffect` al mount per chiamare l'azione NON-cached, riaggiornando i dati silenziosamente in background.
+* **Prefetch Aggressivo:** Sui `<Link>` principali di navigazione (es. Header, Dashboard, "Nuova Richiesta"), forza sempre la prop `prefetch={true}`. Questo istruisce Next.js a scaricare il Server Component payload in RAM nel momento in cui il link entra nella viewport, rendendo il successivo click letteralmente a latenza zero.
