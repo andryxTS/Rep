@@ -91,7 +91,6 @@ Nelle architetture Serverless, le chiamate agli LLM sono soggette a limiti rigid
 * **Modelli Obsoleti:** Sii consapevole di essere in un'epoca molto successiva al tuo cut-off di training. I modelli che ricordi come "attuali" (es. gpt-4o-mini, gemini-1.5) sono DEPRECATI. Quelli che consideri "sperimentali" o futuri, o semplicemente non conosci, sono ora lo standard.
 * **Azione:** Non inserire MAI modelli che tu conosci nel codice, perché sicuramente sono obsoleti, **chiedi sempre all'utente** prima di hardcodare, solo lui ti saprà dire quali modelli al momento sono allo stato dell'arte.
 
-
 ### ⚡ Ottimizzazione Performance (Effetto Zero-Latency / App Nativa)
 Per garantire transizioni istantanee e azzerare il lag di navigazione in Next.js + Cloudflare Workers, l'AI DEVE applicare proattivamente i seguenti pattern:
 * **Auth Istantanea (Supabase):** NON usare MAI `await supabase.auth.getUser()` nel `middleware.ts`, nei `layout.tsx`, `header.tsx`, o nei `page.tsx` per i semplici controlli di sessione. Questo innesca una chiamata HTTP bloccante ai server esterni. Usa SEMPRE `await supabase.auth.getSession()` per estrarre il `session.user` leggendo e decodificando istantaneamente il cookie locale.
