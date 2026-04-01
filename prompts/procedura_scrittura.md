@@ -8,7 +8,7 @@
    pnpm drizzle-kit generate
    echo "y" | pnpm wrangler d1 migrations apply nome-del-db --local
 * **ASSUNZIONE DI APPLICAZIONE AVVENUTA:** Parti sempre dal presupposto che ogni singolo blocco XML che mi generi venga eseguito e applicato con successo al mio codice locale. Nelle iterazioni successive, fai in modo che i tuoi tag `<original>` cerchino il testo che tu stesso hai inserito nel turno precedente, mantenendo lo stato del codice sincronizzato con le tue stesse azioni.
-* **RECUPERO FILE OMESSI O COMPRESSI:** Nell'albero del progetto allegato, alcuni file potrebbero essere contrassegnati con "OMIT" o il loro contenuto potrebbe risultare minimizzato/compresso. **NON ESSERE PARSIMONIOSO.** Se per fare un'analisi accurata o per scrivere codice ritieni che ti serva la versione completa di determinati file, richiedili TUTTI SUBITO alla fine della tua risposta. **MEGLIO CHIEDERE UN FILE IN PIÙ CHE NON VERRÀ UTILIZZATO, PIUTTOSTO CHE FARE UN PASSAGGIO IN PIÙ DOPO.** Puoi richiederli inserendo ALLA FINE della tua risposta questo esatto blocco di codice (con 4 backtick e formato batch):
+* **RECUPERO FILE OMESSI O COMPRESSI:** Nell'albero del progetto allegato, alcuni file potrebbero essere contrassegnati con "OMIT" o il loro contenuto potrebbe risultare minimizzato/compresso. **NON ESSERE PARSIMONIOSO.** Se per fare un'analisi accurata o per scrivere codice ritieni che ti serva la versione completa di determinati file, richiedili TUTTI SUBITO alla fine della tua risposta. **MEGLIO CHIEDERE UN FILE IN PIÙ CHE NON VERRÀ UTILIZZATO, PIUTTOSTO CHE FARE UN PASSAGGIO IN PIÙ DOPO.** Puoi richiederli inserendo ALLA FINE della tua risposta questo esatto blocco di codice (con 4 backtick e formato batch), usando percorsi esatti o sintassi glob (es. `**/*.ts`):
 ````batch
-repomix --include path_file_1,path_file_2
+repomix --include path_esatto.ts,src/app/**/*.tsx,src/app/admin/*
 ````

@@ -17,6 +17,7 @@ import fnmatch
 import shutil
 import tempfile
 import ctypes
+import glob
 from colorama import init, Fore, Style
 
 # --- GESTIONE DIPENDENZE OPZIONALI ---
@@ -334,18 +335,32 @@ def extract_repomix_include(text):
 
 def generate_partial_xml(paths_str, output_path):
     """Genera un XML minimale contenente solo i file richiesti, bypassando il repomixignore."""
-    paths =[p.strip() for p in paths_str.split(',') if p.strip()]
-    xml_lines = ["<files>"]
-    for path in paths:
-        if os.path.exists(path):
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    content = f.read()
-                xml_lines.append(f'<file path="{path}">\n<![CDATA[\n{content}\n]]>\n</file>')
-            except Exception as e:
-                print_warn(f"Impossibile leggere il file {path}: {e}")
+    paths_raw = [p.strip() for p in paths_str.split(',') if p.strip()]
+    
+    resolved_paths = set()
+    for p in paths_raw:
+        if '*' in p or '?' in p:
+            matched = glob.glob(p, recursive=True)
+            for m in matched:
+                if os.path.isfile(m):
+                    resolved_paths.add(m)
         else:
-            print_warn(f"Il file richiesto non esiste: {path}")
+            if os.path.isfile(p):
+                resolved_paths.add(p)
+            elif os.path.exists(p):
+                pass # È una directory valida, viene ignorata per la lettura
+            else:
+                print_warn(f"Il file richiesto non esiste: {p}")
+
+    xml_lines = ["<files>"]
+    for path in sorted(list(resolved_paths)):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+            xml_lines.append(f'<file path="{path}">\n<![CDATA[\n{content}\n]]>\n</file>')
+        except Exception as e:
+            print_warn(f"Impossibile leggere il file {path}: {e}")
+            
     xml_lines.append("</files>")
     
     with open(output_path, "w", encoding="utf-8") as f:
