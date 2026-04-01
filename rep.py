@@ -963,9 +963,20 @@ def cmd_apply():
             else:
                 print(f"{Fore.YELLOW}Nessun file modificato. Copia un blocco XML valido e premi INVIO.{Style.RESET_ALL}")
             
-            user_input = wait_for_enter()
-            if user_input and user_input.strip().lower() == "mod":
-                pyperclip.copy("")
+            while True:
+                user_input = wait_for_enter()
+                if user_input is None:
+                    break
+                ui_lower = user_input.strip().lower()
+                if ui_lower in ["mod", "m"]:
+                    pyperclip.copy("")
+                    break
+                elif ui_lower in ["check", "c"]:
+                    cmd_check(strict_mode=True)
+                    print(f"\n{Fore.YELLOW}👉 Premi INVIO per continuare (o 'm' per mod, 'c' per check).{Style.RESET_ALL}")
+                    continue
+                else:
+                    break
             continue
 
         if "<modified_files>" in raw_content and "[ATTENZIONE, avviso automatico" in raw_content:
@@ -973,9 +984,20 @@ def cmd_apply():
             print(f"{Fore.YELLOW}👉 Devi incollarlo all'LLM, copiare l'XML di risposta e poi premere INVIO qui.{Style.RESET_ALL}")
             print(f"{Style.DIM}(Se vuoi ignorare questo blocco e forzare una nuova scansione, scrivi 'mod' e premi INVIO){Style.RESET_ALL}")
             
-            user_input = wait_for_enter()
-            if user_input and user_input.strip().lower() == "mod":
-                pyperclip.copy("")
+            while True:
+                user_input = wait_for_enter()
+                if user_input is None:
+                    break
+                ui_lower = user_input.strip().lower()
+                if ui_lower in ["mod", "m"]:
+                    pyperclip.copy("")
+                    break
+                elif ui_lower in ["check", "c"]:
+                    cmd_check(strict_mode=True)
+                    print(f"\n{Fore.YELLOW}👉 Premi INVIO per continuare (o 'm' per mod, 'c' per check).{Style.RESET_ALL}")
+                    continue
+                else:
+                    break
             continue
             
         tag_open = "<" + "changes>"
@@ -1202,9 +1224,20 @@ def cmd_apply():
                     print_warn(f"Impossibile caricare il prompt di recovery: {ex}")
                 print(f"\n{Fore.YELLOW}Premere INVIO per riprovare, ESC per terminare.{Style.RESET_ALL}")
 
-        user_input = wait_for_enter()
-        if user_input is not None and user_input.strip().lower() == "mod":
-            pyperclip.copy("") # Svuota gli appunti così al prossimo ciclo parte cmd_mod automaticamente
+        while True:
+            user_input = wait_for_enter()
+            if user_input is None:
+                break
+            ui_lower = user_input.strip().lower()
+            if ui_lower in ["mod", "m"]:
+                pyperclip.copy("") # Svuota gli appunti così al prossimo ciclo parte cmd_mod automaticamente
+                break
+            elif ui_lower in ["check", "c"]:
+                cmd_check(strict_mode=True)
+                print(f"\n{Fore.YELLOW}👉 Premi INVIO per continuare (o 'm' per mod, 'c' per check).{Style.RESET_ALL}")
+                continue
+            else:
+                break
 
 def cmd_mod(auto_input=None):
     old_hashes = {}
