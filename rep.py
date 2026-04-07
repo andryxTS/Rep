@@ -959,9 +959,9 @@ def cmd_apply():
                 print(f"\n{Fore.YELLOW}👉 1. Il prompt con i file modificati è negli appunti.{Style.RESET_ALL}")
                 print(f"{Fore.YELLOW}👉 2. Incollalo nella chat dell'LLM.{Style.RESET_ALL}")
                 print(f"{Fore.YELLOW}👉 3. Copia la risposta XML dell'LLM.{Style.RESET_ALL}")
-                print(f"{Fore.YELLOW}👉 4. Premi INVIO qui per continuare (scrivi 'mod' per forzare nuova scansione).{Style.RESET_ALL}")
+                print(f"{Fore.YELLOW}👉 4. Premi INVIO qui per continuare (scrivi 'mod' per forzare nuova scansione, 'x' per prompt XML).{Style.RESET_ALL}")
             else:
-                print(f"{Fore.YELLOW}Nessun file modificato. Copia un blocco XML valido e premi INVIO.{Style.RESET_ALL}")
+                print(f"{Fore.YELLOW}Nessun file modificato. Copia un blocco XML valido e premi INVIO (scrivi 'x' per copiare il prompt regole XML).{Style.RESET_ALL}")
             
             while True:
                 user_input = wait_for_enter()
@@ -973,7 +973,12 @@ def cmd_apply():
                     break
                 elif ui_lower in ["check", "c"]:
                     cmd_check(strict_mode=True)
-                    print(f"\n{Fore.YELLOW}👉 Premi INVIO per continuare (o 'm' per mod, 'c' per check).{Style.RESET_ALL}")
+                    print(f"\n{Fore.YELLOW}👉 Premi INVIO per continuare (o 'm' per mod, 'c' per check, 'x' per xml).{Style.RESET_ALL}")
+                    continue
+                elif ui_lower in ["xml", "x"]:
+                    pyperclip.copy("Ricordati le regole importantissime del formato dell'XML che mi mandi:\n* I tag changes devono essere racchiusi dentro 4 backtick xml.\n* Dopo aver scritto l'xml e chiuso i backtick scrivi: FINE o FINE XML per segnalarmi che l'output è terminato.")
+                    print_success("Prompt regole XML copiato negli appunti!")
+                    print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                     continue
                 else:
                     break
@@ -982,7 +987,7 @@ def cmd_apply():
         if "<modified_files>" in raw_content and "[ATTENZIONE, avviso automatico" in raw_content:
             print_warn("Gli appunti contengono ancora il prompt generato da cmd_mod.")
             print(f"{Fore.YELLOW}👉 Devi incollarlo all'LLM, copiare l'XML di risposta e poi premere INVIO qui.{Style.RESET_ALL}")
-            print(f"{Style.DIM}(Se vuoi ignorare questo blocco e forzare una nuova scansione, scrivi 'mod' e premi INVIO){Style.RESET_ALL}")
+            print(f"{Style.DIM}(Se vuoi ignorare questo blocco e forzare una nuova scansione scrivi 'mod', per prompt XML scrivi 'x', poi premi INVIO){Style.RESET_ALL}")
             
             while True:
                 user_input = wait_for_enter()
@@ -994,7 +999,12 @@ def cmd_apply():
                     break
                 elif ui_lower in ["check", "c"]:
                     cmd_check(strict_mode=True)
-                    print(f"\n{Fore.YELLOW}👉 Premi INVIO per continuare (o 'm' per mod, 'c' per check).{Style.RESET_ALL}")
+                    print(f"\n{Fore.YELLOW}👉 Premi INVIO per continuare (o 'm' per mod, 'c' per check, 'x' per xml).{Style.RESET_ALL}")
+                    continue
+                elif ui_lower in ["xml", "x"]:
+                    pyperclip.copy("Ricordati le regole importantissime del formato dell'XML che mi mandi:\n* I tag changes devono essere racchiusi dentro 4 backtick xml.\n* Dopo aver scritto l'xml e chiuso i backtick scrivi: FINE XML per segnalarmi che l'output è terminato.")
+                    print_success("Prompt regole XML copiato negli appunti!")
+                    print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                     continue
                 else:
                     break
@@ -1234,7 +1244,12 @@ def cmd_apply():
                 break
             elif ui_lower in ["check", "c"]:
                 cmd_check(strict_mode=True)
-                print(f"\n{Fore.YELLOW}👉 Premi INVIO per continuare (o 'm' per mod, 'c' per check).{Style.RESET_ALL}")
+                print(f"\n{Fore.YELLOW}👉 Premi INVIO per continuare (o 'm' per mod, 'c' per check, 'x' per xml).{Style.RESET_ALL}")
+                continue
+            elif ui_lower in ["xml", "x"]:
+                pyperclip.copy("Ricordati le regole importantissime del formato dell'XML che mi mandi:\n* I tag changes devono essere racchiusi dentro 4 backtick xml.\n* Dopo aver scritto l'xml e chiuso i backtick scrivi: FINE o FINE XML per segnalarmi che l'output è terminato.")
+                print_success("Prompt regole XML copiato negli appunti!")
+                print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                 continue
             else:
                 break
