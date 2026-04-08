@@ -482,11 +482,20 @@ def cmd_init(auto_input=None, compress_mode=False):
         print("👉 Ho aperto la cartella. Seleziona i 2 file e trascinali nella chat.")
 
     # 5. Attesa Feedback
-    msg = "👉 2. Inserisci il feedback dal chatbot (lascia vuoto per default):"
-    feedback_input = get_multiline_input(msg).strip()
-    
-    if not feedback_input:
-        feedback_input = "OK, fai tu in autonomia le scelte che ritieni più opportune."
+    while True:
+        msg = "👉 2. Inserisci il feedback dal chatbot (lascia vuoto per default, 'retry' per ricopiare i file):"
+        feedback_input = get_multiline_input(msg).strip()
+        
+        if feedback_input.lower() in ["retry", "riprova", "rimanda", "prompt", "again", "precedente"]:
+            if copy_files_to_clipboard_os(files_to_copy):
+                print_success("✅ I file sono stati copiati di nuovo negli appunti!")
+            else:
+                print_warn("Impossibile copiare i file automaticamente.")
+            continue
+            
+        if not feedback_input:
+            feedback_input = "OK, fai tu in autonomia le scelte che ritieni più opportune."
+        break
 
     # Intercetta richiesta LLM per file non compressati
     raw_clipboard = pyperclip.paste()
