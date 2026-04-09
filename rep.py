@@ -1519,7 +1519,7 @@ def cmd_check(strict_mode=True):
         
         if choice in ["", "1"]:
             # Opzione 1: Init Completo
-            cmd_init(auto_input=prompt_message_init)
+            cmd_init(auto_input=prompt_message_init,compress_mode=True)
             
         elif choice == "2":
             # Opzione 2: Solo Prompt (Smart)
