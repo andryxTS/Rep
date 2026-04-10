@@ -380,8 +380,35 @@ def clean_code_content(content):
 
 # --- CORE FUNCTIONS ---
 
-def cmd_init(auto_input=None, compress_mode=False):
+def is_react_next_project():
+    """Verifica se il progetto corrente è basato su React o Next.js."""
+    # 1. Check configurazioni tipiche Next.js
+    next_configs = ["next.config.js", "next.config.ts", "next.config.mjs"]
+    for cfg in next_configs:
+        if os.path.exists(cfg):
+            return True
+            
+    # 2. Check dependencies nel package.json
+    if os.path.exists("package.json"):
+        try:
+            with open("package.json", "r", encoding="utf-8") as f:
+                data = json.load(f)
+                deps = data.get("dependencies", {})
+                dev_deps = data.get("devDependencies", {})
+                if any(x in deps for x in ["next", "react"]) or any(x in dev_deps for x in ["next", "react"]):
+                    return True
+        except Exception:
+            pass
+            
+    return False
+
+def cmd_init(auto_input=None, compress_mode=None):
     ensure_prompts_exist()
+    
+    if compress_mode is None:
+        compress_mode = is_react_next_project()
+        if compress_mode:
+            print_step("Rilevato progetto React/Next.js. Modalità '--compress' attivata di default.")
 
     # --- Controllo presenza RepomixIgnore ---
     trigger_ignore = False
@@ -990,10 +1017,13 @@ def cmd_apply():
                     print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                     continue
                 elif ui_lower in ["init", "i"]:
-                    cmd_init(compress_mode=False)
+                    cmd_init(compress_mode=None)
                     return
                 elif ui_lower in ["init comp", "i c"]:
                     cmd_init(compress_mode=True)
+                    return
+                elif ui_lower in ["init est", "init estesa", "init esteso", "init completa", "i e"]:
+                    cmd_init(compress_mode=False)
                     return
                 else:
                     break
@@ -1267,10 +1297,13 @@ def cmd_apply():
                 print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                 continue
             elif ui_lower in ["init", "i"]:
-                cmd_init(compress_mode=False)
+                cmd_init(compress_mode=None)
                 return
             elif ui_lower in ["init comp", "i c"]:
                 cmd_init(compress_mode=True)
+                return
+            elif ui_lower in ["init est", "init estesa", "init esteso", "init completa", "i e"]:
+                cmd_init(compress_mode=False)
                 return
             else:
                 break
@@ -1911,7 +1944,16 @@ def main():
     if len(sys.argv) < 2: cmd_apply()
     action = sys.argv[1]
     if action == "init":
-        compress_mode = len(sys.argv) > 2 and sys.argv[2] in ["comp", "compress"]
+        if len(sys.argv) > 2:
+            arg = sys.argv[2].lower()
+            if arg in ["comp", "compress"]:
+                compress_mode = True
+            elif arg in ["est", "esteso", "estesa", "completa"]:
+                compress_mode = False
+            else:
+                compress_mode = None
+        else:
+            compress_mode = None
         cmd_init(compress_mode=compress_mode)
     elif action == "apply": cmd_apply()
     elif action == "mod": cmd_mod()
