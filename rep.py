@@ -335,7 +335,7 @@ def extract_repomix_include(text):
 
 def generate_partial_xml(paths_str, output_path):
     """Genera un XML minimale contenente solo i file richiesti, bypassando il repomixignore."""
-    paths_raw = [p.strip() for p in paths_str.split(',') if p.strip()]
+    paths_raw = [p.strip().strip("\"'") for p in paths_str.split(',') if p.strip()]
     
     resolved_paths = set()
     for p in paths_raw:
