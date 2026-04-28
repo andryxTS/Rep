@@ -335,10 +335,12 @@ def extract_repomix_include(text):
 
 def generate_partial_xml(paths_str, output_path):
     """Genera un XML minimale contenente solo i file richiesti, bypassando il repomixignore."""
-    paths_raw = [p.strip().strip("\"'") for p in paths_str.split(',') if p.strip()]
+    paths_raw =[p.strip().strip("\"'") for p in paths_str.split(',') if p.strip()]
     
     resolved_paths = set()
     for p in paths_raw:
+        # Sanitizza escape anomali inseriti dall'LLM su parentesi
+        p = re.sub(r'\\([()\[\]{}])', r'\1', p)
         if '*' in p or '?' in p:
             matched = glob.glob(p, recursive=True)
             for m in matched:
@@ -1022,7 +1024,7 @@ def cmd_apply():
                 elif ui_lower in ["init comp", "i c"]:
                     cmd_init(compress_mode=True)
                     return
-                elif ui_lower in ["init est", "init estesa", "init esteso", "init completa", "i e"]:
+                elif ui_lower in ["init est", "init estesa", "init esteso", "init completo", "init completa", "i e"]:
                     cmd_init(compress_mode=False)
                     return
                 else:
@@ -1302,7 +1304,7 @@ def cmd_apply():
             elif ui_lower in ["init comp", "i c"]:
                 cmd_init(compress_mode=True)
                 return
-            elif ui_lower in ["init est", "init estesa", "init esteso", "init completa", "i e"]:
+            elif ui_lower in ["init est", "init estesa", "init esteso", "init completo", "init completa", "i e"]:
                 cmd_init(compress_mode=False)
                 return
             else:
