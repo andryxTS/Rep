@@ -51,6 +51,7 @@ PROMPT_PROCEDURA_SCRITTURA_FILE = os.path.join(PROMPTS_DIR, "procedura_scrittura
 PROMPT_PROCEDURA_ANALISI_FILE = os.path.join(PROMPTS_DIR, "procedura_analisi.md")
 PROMPT_PATCH_RECOVERY_FILE = os.path.join(PROMPTS_DIR, "patch_recovery.md")
 PROMPT_ANTI_ESCAPE_FILE = os.path.join(PROMPTS_DIR, "anti_escape_quadre.md")
+PROMPT_GENERICO_FILE = os.path.join(PROMPTS_DIR, "generico.md")
 GLOBAL_IGNORE_FILE = os.path.join(PROMPTS_DIR, ".repomixignore.template")
 
 # --- UTILS SISTEMA ---
@@ -211,7 +212,8 @@ def ensure_prompts_exist():
         PROMPT_PROCEDURA_SCRITTURA_FILE,
         PROMPT_PROCEDURA_ANALISI_FILE,
         PROMPT_PATCH_RECOVERY_FILE,
-        PROMPT_ANTI_ESCAPE_FILE
+        PROMPT_ANTI_ESCAPE_FILE,
+        PROMPT_GENERICO_FILE
     ]
     
     missing = [f for f in required_files if not os.path.exists(f)]
@@ -986,6 +988,61 @@ def patch_repomix_with_tree(filepath, tree_str):
             f.write(new_content)
 
 
+def cmd_generic(file_pattern=None):
+    ensure_prompts_exist()
+    
+    global CURRENT_TEMP_DIR
+    CURRENT_TEMP_DIR = setup_temp_dir()
+    
+    repomix_path = os.path.join(CURRENT_TEMP_DIR, REPOMIX_OUTPUT_FILENAME)
+    prompt_path = os.path.join(CURRENT_TEMP_DIR, PROMPT_FILENAME)
+
+    print_step("Esecuzione Repomix (Modalità Generica)...")
+    
+    # In modalità generica esportiamo i file crudi e non compressi
+    cmd = f"repomix . --style xml --output {repomix_path} --quiet"
+    if file_pattern:
+        cmd += f" --include \"{file_pattern}\""
+        
+    run_command(cmd, capture=False)
+
+    if not os.path.exists(repomix_path):
+        print_error("Repomix fallito. File non creato.")
+        return
+
+    user_input = get_multiline_input("Descrivi le modifiche da apportare ai file (lascia vuoto per generare solo le istruzioni di output):")
+    
+    with open(PROMPT_GENERICO_FILE, "r", encoding="utf-8") as f: template = f.read()
+    with open(PROMPT_FORMATO_OUTPUT, "r", encoding="utf-8") as f: formato_output_content = f.read()
+    with open(PROMPT_PROCEDURA_SCRITTURA_FILE, "r", encoding="utf-8") as f: procedura_scrittura_content = f.read()
+    
+    if user_input.strip():
+        task_section = f"**TASK E MODIFICHE RICHIESTE:**\n{user_input}\n\n**PROCEDURA DA SEGUIRE:**\n{procedura_scrittura_content}"
+    else:
+        task_section = f"**ISTRUZIONI:**\nMemorizza il formato di output e la struttura dei file allegati. Quando ti chiederò di effettuare delle modifiche, dovrai attenerti rigorosamente a queste regole.\n\n**PROCEDURA DA SEGUIRE:**\n{procedura_scrittura_content}"
+
+    final_prompt = template.replace("{task_section}", task_section)
+    final_prompt = final_prompt.replace("{formato_output}", formato_output_content)
+    
+    with open(prompt_path, "w", encoding="utf-8") as f: f.write(final_prompt)
+    print_success(f"File creato: {prompt_path}")
+
+    files_to_copy = [prompt_path, repomix_path]
+    copied = copy_files_to_clipboard_os(files_to_copy)
+    
+    print_step("--- PRONTO PER IL CHATBOT (MODALITÀ GENERICA) ---")
+    if copied:
+        print_success("✅ I 2 file (PROMPT.md e XML) sono stati copiati negli appunti!")
+        print("👉 Vai nella chat e premi CTRL+V (Incolla).")
+    else:
+        open_folder(CURRENT_TEMP_DIR)
+        print("👉 Ho aperto la cartella. Trascina i 2 file nella chat.")
+
+    print(f"{Fore.YELLOW}👉 Quando hai ricevuto l'XML di risposta, COPIALO e premi INVIO qui per applicarlo.{Style.RESET_ALL}")
+    wait_for_enter()
+    cmd_apply()
+
+
 def cmd_apply():
     deferred_shell_commands = []
     while True:
@@ -1026,6 +1083,9 @@ def cmd_apply():
                     return
                 elif ui_lower in ["init est", "init estesa", "init esteso", "init completo", "init completa", "i e"]:
                     cmd_init(compress_mode=False)
+                    return
+                elif ui_lower in ["gen", "generico", "init gen", "init generico"]:
+                    cmd_generic()
                     return
                 else:
                     break
@@ -1306,6 +1366,9 @@ def cmd_apply():
                 return
             elif ui_lower in ["init est", "init estesa", "init esteso", "init completo", "init completa", "i e"]:
                 cmd_init(compress_mode=False)
+                return
+            elif ui_lower in ["gen", "generico", "init gen", "init generico"]:
+                cmd_generic()
                 return
             else:
                 break
@@ -1944,11 +2007,14 @@ def cmd_best():
 
 def main():
     if len(sys.argv) < 2: cmd_apply()
-    action = sys.argv[1]
+    action = sys.argv[1].lower()
     if action == "init":
         if len(sys.argv) > 2:
             arg = sys.argv[2].lower()
-            if arg in ["comp", "compress"]:
+            if arg in ["gen", "generico"]:
+                file_pattern = sys.argv[3] if len(sys.argv) > 3 else None
+                return cmd_generic(file_pattern)
+            elif arg in ["comp", "compress"]:
                 compress_mode = True
             elif arg in ["est", "esteso", "estesa", "completa"]:
                 compress_mode = False
@@ -1957,6 +2023,9 @@ def main():
         else:
             compress_mode = None
         cmd_init(compress_mode=compress_mode)
+    elif action in ["gen", "generico"]:
+        file_pattern = sys.argv[2] if len(sys.argv) > 2 else None
+        return cmd_generic(file_pattern)
     elif action == "apply": cmd_apply()
     elif action == "mod": cmd_mod()
     elif action == "check":

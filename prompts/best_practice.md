@@ -112,3 +112,10 @@ Per garantire transizioni istantanee e azzerare il lag di navigazione in Next.js
 * **Nome Regola:** Auth Backend-Driven per prevenzione Split-Brain.
 * **Descrizione:** Nelle architetture in cui Supabase gestisce le identità e D1/Postgres locale conserva l'anagrafica utente, non permettere MAI aggiornamenti diretti client-side (es. Email o Password) tramite i metodi `supabase.auth.updateUser()`. Un disallineamento di rete tra la mutazione client e la sincronizzazione DB causa account orfani.
 * **Soluzione:** Utilizza sempre una Server Action che interroga l'API di Admin Supabase tramite la `SUPABASE_SERVICE_ROLE_KEY`. Gestisci la mutazione su Supabase e su D1 all'interno di un blocco try/catch pseudo-transazionale, predisponendo il rollback manuale della modifica Supabase se il DB locale fallisce l'aggiornamento.
+
+### ☁️ Sopravvivenza Task al Cambio Pagina (Fire-and-Forget)
+* **Usa fetch(), mai Server Actions:** Se avvii un task asincrono lungo dal client e fai subito `router.push()`, React annulla la Server Action e Cloudflare "uccide" il worker all'istante bloccando tutto. Usa sempre e solo una chiamata `fetch()` nativa verso una Route API/Webhook: essendo ignorata dal ciclo di vita di React, la connessione sopravvive al cambio rotta.
+
+### ☁️ OpenNext: Prevenzione SQLITE_BUSY in Build
+* **Regola:** In `next.config.ts`, incapsula SEMPRE `initOpenNextCloudflareForDev()` dentro `if (process.env.NODE_ENV === "development") { ... }`.
+* **Motivo:** L'invocazione top-level avvia `workerd` durante la build (CI/CD) mandando in lock il database fittizio e causando il crash `SQLITE_BUSY`.
