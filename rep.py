@@ -361,7 +361,7 @@ def generate_partial_xml(paths_str, output_path):
         try:
             with open(path, "r", encoding="utf-8") as f:
                 content = f.read()
-            xml_lines.append(f'<file path="{path}">\n<![CDATA[\n{content}\n]]>\n</file>')
+            xml_lines.append(f'<file path="{path}">\n{content}\n</file>')
         except Exception as e:
             print_warn(f"Impossibile leggere il file {path}: {e}")
             
@@ -1027,38 +1027,38 @@ def apply_uncompressed_rules(repomix_filepath):
                 continue
 
             norm_path = filepath.replace('\\', '/')
-            new_block = f'<file path="{norm_path}">\n<![CDATA[\n{file_full_content}\n]]>\n</file>'
+            new_block = f'<file path="{norm_path}">\n{file_full_content}\n</file>'
             
             escaped_path_1 = re.escape(filepath)
-                escaped_path_2 = re.escape(norm_path)
-                tag_regex = re.compile(rf'<file path="({escaped_path_1}|{escaped_path_2})">')
+            escaped_path_2 = re.escape(norm_path)
+            tag_regex = re.compile(rf'<file path="({escaped_path_1}|{escaped_path_2})">')
+            
+            match = tag_regex.search(content)
+            if match:
+                start_idx = match.start()
+                # Trova in modo sicuro la fine di QUESTO blocco xml bypassando i falsi positivi nel codice sorgente
+                next_file_idx = content.find('<file path="', match.end())
+                end_files_idx = content.find('</files>', match.end())
                 
-                match = tag_regex.search(content)
-                if match:
-                    start_idx = match.start()
-                    # Trova in modo sicuro la fine di QUESTO blocco xml bypassando i falsi positivi nel codice sorgente
-                    next_file_idx = content.find('<file path="', match.end())
-                    end_files_idx = content.find('</files>', match.end())
-                    
-                    limit = next_file_idx if next_file_idx != -1 else end_files_idx
-                    if limit == -1: limit = len(content)
-                    
-                    # Cerca l'ultimo </file> valido confinato prima del limite calcolato
-                    end_tag_idx = content.rfind('</file>', start_idx, limit)
-                    
-                    if end_tag_idx != -1:
-                        content = content[:start_idx] + new_block + content[end_tag_idx + 7:]
-                        modified = True
-                        print_step(f"Incluso file completo (uncompressed rule): {filepath}")
-                elif force:
-                    # Inserimento esatto prima dell'ultimo tag di chiusura root per scongiurare sostituzioni globali
-                    end_files_idx = content.rfind('</files>')
-                    if end_files_idx != -1:
-                        content = content[:end_files_idx] + f"{new_block}\n" + content[end_files_idx:]
-                    else:
-                        content += f"\n{new_block}"
+                limit = next_file_idx if next_file_idx != -1 else end_files_idx
+                if limit == -1: limit = len(content)
+                
+                # Cerca l'ultimo </file> valido confinato prima del limite calcolato
+                end_tag_idx = content.rfind('</file>', start_idx, limit)
+                
+                if end_tag_idx != -1:
+                    content = content[:start_idx] + new_block + content[end_tag_idx + 7:]
                     modified = True
-                    print_step(f"Forzata inclusione file completo: {filepath}")
+                    print_step(f"Incluso file completo (uncompressed rule): {filepath}")
+            elif force:
+                # Inserimento esatto prima dell'ultimo tag di chiusura root per scongiurare sostituzioni globali
+                end_files_idx = content.rfind('</files>')
+                if end_files_idx != -1:
+                    content = content[:end_files_idx] + f"{new_block}\n" + content[end_files_idx:]
+                else:
+                    content += f"\n{new_block}"
+                modified = True
+                print_step(f"Forzata inclusione file completo: {filepath}")
 
     if modified:
         with open(repomix_filepath, "w", encoding="utf-8") as f:
@@ -1491,7 +1491,7 @@ def cmd_mod(auto_input=None):
     else:
         req = get_multiline_input("Richiesta (OPZIONALE, altrimenti lascia vuoto per ottenere solo l'aggiornamento file modificati):")
 
-    xml = "<modified_files>\n" + "".join([f' <file path="{p}"><![CDATA[\n{open(p,"r",encoding="utf-8").read()}\n]]></file>\n' for p in modified]) + "</modified_files>"
+    xml = "<modified_files>\n" + "".join([f' <file path="{p}">\n{open(p,"r",encoding="utf-8").read()}\n</file>\n' for p in modified]) + "</modified_files>"
     
     if req:
         pyperclip.copy(f"{req}\n\n[ATTENZIONE, avviso automatico di sistema: dall'ultimo aggiornamento sono stati modificati alcuni file, che verranno riportati qui sotto e verranno considerati la nuova versione di riferimento:]\n```{xml}```")

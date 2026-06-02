@@ -20,6 +20,7 @@ bun.lockb
 .rep_state.json
 .rep_temp/
 repomix.config.json
+rep.config.json
 repomix-output.md
 repomix-output.xml
 *.log
