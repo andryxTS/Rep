@@ -477,6 +477,7 @@ def cmd_init(auto_input=None, compress_mode=None):
     # Sostituisce il blocco iniziale di repomix con il Tree personalizzato
     tree_str = generate_project_tree()
     patch_repomix_with_tree(repomix_path, tree_str)
+    apply_uncompressed_rules(repomix_path)
 
     # 3. Input Utente e Creazione Prompt File
     if auto_input:
@@ -987,6 +988,82 @@ def patch_repomix_with_tree(filepath, tree_str):
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(new_content)
 
+def apply_uncompressed_rules(repomix_filepath):
+    config_path = "rep.config.json"
+    if not os.path.exists(config_path): return
+
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+    except Exception as e:
+        print_warn(f"Errore lettura {config_path}: {e}")
+        return
+
+    rules = config.get("uncompressed", [])
+    if not rules: return
+
+    try:
+        with open(repomix_filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+    except Exception as e:
+        print_warn(f"Errore lettura output repomix per uncompressed rules: {e}")
+        return
+
+    modified = False
+    for rule in rules:
+        pattern_str = rule.get("pattern")
+        force = rule.get("force", False)
+        if not pattern_str: continue
+
+        matched_files = glob.glob(pattern_str, recursive=True)
+        for filepath in matched_files:
+            if not os.path.isfile(filepath): continue
+            
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    file_full_content = f.read()
+            except Exception as e:
+                print_warn(f"Impossibile leggere file {filepath}: {e}")
+                continue
+
+            norm_path = filepath.replace('\\', '/')
+            new_block = f'<file path="{norm_path}">\n<![CDATA[\n{file_full_content}\n]]>\n</file>'
+            
+            escaped_path_1 = re.escape(filepath)
+                escaped_path_2 = re.escape(norm_path)
+                tag_regex = re.compile(rf'<file path="({escaped_path_1}|{escaped_path_2})">')
+                
+                match = tag_regex.search(content)
+                if match:
+                    start_idx = match.start()
+                    # Trova in modo sicuro la fine di QUESTO blocco xml bypassando i falsi positivi nel codice sorgente
+                    next_file_idx = content.find('<file path="', match.end())
+                    end_files_idx = content.find('</files>', match.end())
+                    
+                    limit = next_file_idx if next_file_idx != -1 else end_files_idx
+                    if limit == -1: limit = len(content)
+                    
+                    # Cerca l'ultimo </file> valido confinato prima del limite calcolato
+                    end_tag_idx = content.rfind('</file>', start_idx, limit)
+                    
+                    if end_tag_idx != -1:
+                        content = content[:start_idx] + new_block + content[end_tag_idx + 7:]
+                        modified = True
+                        print_step(f"Incluso file completo (uncompressed rule): {filepath}")
+                elif force:
+                    # Inserimento esatto prima dell'ultimo tag di chiusura root per scongiurare sostituzioni globali
+                    end_files_idx = content.rfind('</files>')
+                    if end_files_idx != -1:
+                        content = content[:end_files_idx] + f"{new_block}\n" + content[end_files_idx:]
+                    else:
+                        content += f"\n{new_block}"
+                    modified = True
+                    print_step(f"Forzata inclusione file completo: {filepath}")
+
+    if modified:
+        with open(repomix_filepath, "w", encoding="utf-8") as f:
+            f.write(content)
+
 
 def cmd_generic(file_pattern=None):
     ensure_prompts_exist()
@@ -1009,6 +1086,8 @@ def cmd_generic(file_pattern=None):
     if not os.path.exists(repomix_path):
         print_error("Repomix fallito. File non creato.")
         return
+        
+    apply_uncompressed_rules(repomix_path)
 
     user_input = get_multiline_input("Descrivi le modifiche da apportare ai file (lascia vuoto per generare solo le istruzioni di output):")
     
@@ -1068,11 +1147,16 @@ def cmd_apply():
                     break
                 elif ui_lower in ["check", "c"]:
                     cmd_check(strict_mode=True)
-                    print(f"\n{Fore.YELLOW}👉 Premi INVIO per continuare (o 'm' mod, 'c' check, 'x' xml, 'i' init).{Style.RESET_ALL}")
+                    print(f"\n{Fore.YELLOW}👉 Premi INVIO per continuare (o 'm' mod, 'r' rev, 'c' check, 'x' xml, 'i' init).{Style.RESET_ALL}")
                     continue
                 elif ui_lower in ["xml", "x"]:
                     pyperclip.copy("Ricordati le regole importantissime del formato dell'XML che mi mandi:\n* I tag changes devono essere racchiusi dentro 4 backtick xml.\n* Dopo aver scritto l'xml e chiuso i backtick scrivi: FINE o FINE XML per segnalarmi che l'output è terminato.")
                     print_success("Prompt regole XML copiato negli appunti!")
+                    print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
+                    continue
+                elif ui_lower in ["revisione", "rev", "r"]:
+                    pyperclip.copy("Ora fai una revisione accurata e meticolosa di quanto hai fatto. Controlla se ci sono bug e omissioni. Controlla la logica, la gestione degli errori e i casi limite (edge cases).\nQuindi applica le correzioni. Ti chiederò di ripetere il processo finché non è tutto ok, per andare in produzione è molto meglio se preveniamo errori e lunghi debug, controllando bene preventivamente.")
+                    print_success("Prompt di revisione copiato negli appunti!")
                     print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                     continue
                 elif ui_lower in ["init", "i"]:
@@ -1106,11 +1190,16 @@ def cmd_apply():
                     break
                 elif ui_lower in ["check", "c"]:
                     cmd_check(strict_mode=True)
-                    print(f"\n{Fore.YELLOW}👉 Premi INVIO per continuare (o 'm' per mod, 'c' per check, 'x' per xml).{Style.RESET_ALL}")
+                    print(f"\n{Fore.YELLOW}👉 Premi INVIO per continuare (o 'm' per mod, 'r' per rev, 'c' per check, 'x' per xml).{Style.RESET_ALL}")
                     continue
                 elif ui_lower in ["xml", "x"]:
                     pyperclip.copy("Ricordati le regole importantissime del formato dell'XML che mi mandi:\n* I tag changes devono essere racchiusi dentro 4 backtick xml.\n* Dopo aver scritto l'xml e chiuso i backtick scrivi: FINE XML per segnalarmi che l'output è terminato.")
                     print_success("Prompt regole XML copiato negli appunti!")
+                    print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
+                    continue
+                elif ui_lower in ["revisione", "rev", "r"]:
+                    pyperclip.copy("Ora fai una revisione accurata e meticolosa di quanto hai fatto. Controlla se ci sono bug e omissioni. Controlla la logica, la gestione degli errori e i casi limite (edge cases).\nQuindi applica le correzioni. Ti chiederò di ripetere il processo finché non è tutto ok, per andare in produzione è molto meglio se preveniamo errori e lunghi debug, controllando bene preventivamente.")
+                    print_success("Prompt di revisione copiato negli appunti!")
                     print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                     continue
                 else:
@@ -1351,11 +1440,16 @@ def cmd_apply():
                 break
             elif ui_lower in ["check", "c"]:
                 cmd_check(strict_mode=True)
-                print(f"\n{Fore.YELLOW}👉 Premi INVIO per continuare (o 'm' mod, 'c' check, 'x' xml, 'i' init).{Style.RESET_ALL}")
+                print(f"\n{Fore.YELLOW}👉 Premi INVIO per continuare (o 'm' mod, 'r' rev, 'c' check, 'x' xml, 'i' init).{Style.RESET_ALL}")
                 continue
             elif ui_lower in ["xml", "x"]:
                 pyperclip.copy("Ricordati le regole importantissime del formato dell'XML che mi mandi:\n* I tag changes devono essere racchiusi dentro 4 backtick xml.\n* Dopo aver scritto l'xml e chiuso i backtick scrivi: FINE o FINE XML per segnalarmi che l'output è terminato.")
                 print_success("Prompt regole XML copiato negli appunti!")
+                print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
+                continue
+            elif ui_lower in ["revisione", "rev", "r"]:
+                pyperclip.copy("Ora fai una revisione accurata e meticolosa di quanto hai fatto. Controlla se ci sono bug e omissioni. Controlla la logica, la gestione degli errori e i casi limite (edge cases).\nQuindi applica le correzioni. Ti chiederò di ripetere il processo finché non è tutto ok, per andare in produzione è molto meglio se preveniamo errori e lunghi debug, controllando bene preventivamente.")
+                print_success("Prompt di revisione copiato negli appunti!")
                 print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                 continue
             elif ui_lower in ["init", "i"]:
@@ -1860,8 +1954,7 @@ def cmd_new():
 
     tree_str = generate_project_tree()
     patch_repomix_with_tree(repomix_path, tree_str)
-
-    # I file sono garantiti da ensure_prompts_exist()
+    apply_uncompressed_rules(repomix_path)
 
     # I file sono garantiti da ensure_prompts_exist()
     with open(PROMPT_FORMATO_OUTPUT, "r", encoding="utf-8") as f: 

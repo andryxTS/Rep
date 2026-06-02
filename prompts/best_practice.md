@@ -119,3 +119,8 @@ Per garantire transizioni istantanee e azzerare il lag di navigazione in Next.js
 ### ☁️ OpenNext: Prevenzione SQLITE_BUSY in Build
 * **Regola:** In `next.config.ts`, incapsula SEMPRE `initOpenNextCloudflareForDev()` dentro `if (process.env.NODE_ENV === "development") { ... }`.
 * **Motivo:** L'invocazione top-level avvia `workerd` durante la build (CI/CD) mandando in lock il database fittizio e causando il crash `SQLITE_BUSY`.
+
+### ☁️ Lettura Variabili d'Ambiente (Cloudflare vs Local Dev)
+* **Nome Regola:** Obbligo Fallback `process.env` per l'ambiente locale.
+* **Soluzione:** Quando estrai variabili d'ambiente (es. Secret Keys) usando `getCloudflareContext().env`, DEVI SEMPRE inserire il fallback a `process.env.NOME_CHIAVE`. In ambiente di sviluppo locale (`next dev` con OpenNext), l'oggetto `env` di Cloudflare non viene automaticamente popolato con le variabili presenti nel file `.env.local` classico (a meno che non siano definite nel `wrangler.jsonc`), restituendo `undefined` e causando crash di autorizzazione.
+* **Pattern Obbligatorio:** `const secret = (getCloudflareContext().env as any)?.MIA_CHIAVE || process.env.MIA_CHIAVE;`

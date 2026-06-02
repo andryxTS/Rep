@@ -30,9 +30,7 @@ repomix-output.xml
 Thumbs.db
 .env
 .git/
-!.github/workflows/
 .vscode/
-!.gitignore
 .repomixignore
 .eslintignore
 .prettierignore
@@ -116,3 +114,19 @@ update_codebase.py
 *.sh
 scripts/
 # *.py rimosso per sicurezza, ma manteniamo i file specifici richiesti
+
+# --- LOCAL IGNORE (Progetto Attuale) ---
+node_modules/**
+.git/**
+.next/**
+dist/**
+build/**
+package-lock.json
+pnpm-lock.yaml
+**/*.pyc
+
+# --- NEW ADDITIONS (Basato sul contesto Python) ---
+# Esclusione ambienti virtuali Python che potrebbero appesantire il parsing
+venv/
+.venv/
+env/

@@ -1,3 +1,14 @@
+## FILE DI CONFIGURAZIONE
+*Da includere nella root dei progetti che hanno bisogno dell'inclusione completa di alcuni file (solo se comunque presenti in modo compresso oppure forzatamente ad ogni rep init)*
+
+rep.config.json
+{
+  "uncompressed": [
+    { "pattern": "src/utils/*.ts", "force": false },
+    { "pattern": "README.md", "force": true }
+  ]
+}
+
 ### 1. Istruzioni di Installazione
 
 Servono solo 2 requisiti: Python e Node.js (per repomix).
