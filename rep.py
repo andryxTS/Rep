@@ -1155,7 +1155,7 @@ def cmd_apply():
                     print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                     continue
                 elif ui_lower in ["revisione", "rev", "r"]:
-                    pyperclip.copy("Ora fai una revisione accurata e meticolosa di quanto hai fatto. Controlla se ci sono bug e omissioni. Controlla la logica, la gestione degli errori e i casi limite (edge cases).\nQuindi applica le correzioni. Ti chiederò di ripetere il processo finché non è tutto ok, per andare in produzione è molto meglio se preveniamo errori e lunghi debug, controllando bene preventivamente.")
+                    pyperclip.copy("Ho applicato le modifiche. Ora fai una revisione accurata e meticolosa di quanto hai fatto. Controlla se ci sono bug e omissioni. Controlla la logica, la gestione degli errori e i casi limite (edge cases).\nQuindi applica le correzioni. Ti chiederò di ripetere il processo finché non è tutto ok, per andare in produzione è molto meglio se preveniamo errori e lunghi debug, controllando bene preventivamente.")
                     print_success("Prompt di revisione copiato negli appunti!")
                     print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                     continue
@@ -1198,7 +1198,7 @@ def cmd_apply():
                     print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                     continue
                 elif ui_lower in ["revisione", "rev", "r"]:
-                    pyperclip.copy("Ora fai una revisione accurata e meticolosa di quanto hai fatto. Controlla se ci sono bug e omissioni. Controlla la logica, la gestione degli errori e i casi limite (edge cases).\nQuindi applica le correzioni. Ti chiederò di ripetere il processo finché non è tutto ok, per andare in produzione è molto meglio se preveniamo errori e lunghi debug, controllando bene preventivamente.")
+                    pyperclip.copy("Ho applicato le modifiche. Ora fai una revisione accurata e meticolosa di quanto hai fatto. Controlla se ci sono bug e omissioni. Controlla la logica, la gestione degli errori e i casi limite (edge cases).\nQuindi applica le correzioni. Ti chiederò di ripetere il processo finché non è tutto ok, per andare in produzione è molto meglio se preveniamo errori e lunghi debug, controllando bene preventivamente.")
                     print_success("Prompt di revisione copiato negli appunti!")
                     print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                     continue
@@ -1448,7 +1448,7 @@ def cmd_apply():
                 print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                 continue
             elif ui_lower in ["revisione", "rev", "r"]:
-                pyperclip.copy("Ora fai una revisione accurata e meticolosa di quanto hai fatto. Controlla se ci sono bug e omissioni. Controlla la logica, la gestione degli errori e i casi limite (edge cases).\nQuindi applica le correzioni. Ti chiederò di ripetere il processo finché non è tutto ok, per andare in produzione è molto meglio se preveniamo errori e lunghi debug, controllando bene preventivamente.")
+                pyperclip.copy("Ho applicato le modifiche. Ora fai una revisione accurata e meticolosa di quanto hai fatto. Controlla se ci sono bug e omissioni. Controlla la logica, la gestione degli errori e i casi limite (edge cases).\nQuindi applica le correzioni. Ti chiederò di ripetere il processo finché non è tutto ok, per andare in produzione è molto meglio se preveniamo errori e lunghi debug, controllando bene preventivamente.")
                 print_success("Prompt di revisione copiato negli appunti!")
                 print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                 continue

@@ -54,7 +54,7 @@ Ricordati di mettere il cursor pointer su ogni link e pulsante o qualsiasi eleme
 ### Eliminazione file e cartelle in locale
 Per l'eliminazione di file e cartelle, attieniti a queste due regole:
 1. **Eliminazione sicura (Cestino):** Usa SEMPRE il tag `<delete_file path="path/to/file_or_folder" />` per eliminare file o cartelle standard. Lo script li sposterà in modo sicuro nel cestino di sistema.
-2. **Eliminazione definitiva (Cartelle enormi):** NON usare il tag `<delete_file>` per cartelle gigantesche o profondamente inalberate come `node_modules` o `.next`. Spostarle nel cestino su Windows è troppo lento. Per queste specifiche cartelle usa il tag `<shell>` fornendo il comando per l'eliminazione definitiva: `rd /s /q "nome_cartella"`.
+2. **Eliminazione definitiva (Cartelle enormi):** NON usare il tag `<delete_file>` per cartelle gigantesche o profondamente inalberate come `node_modules` o `.next`. Spostarle nel cestino su Windows è troppo lento. Per queste specifiche cartelle usa il tag `<shell>` fornendo il comando per l'eliminazione definitiva: `rd "nome_cartella" -Recurse -Force`.
 
 ### ☁️ Gestione Variabili d'Ambiente Cloudflare (Type-Checking & Build)
 * **Separazione `cloudflare-env.d.ts`:** Il file `/cloudflare-env.d.ts` generato automaticamente da Wrangler nella root del progetto **deve sempre rimanere ignorato** in `.gitignore` e `.repomixignore` (per evitare continui conflitti su Git). Tuttavia, poiché TypeScript (es. durante la build di Next.js) effettua il type-checking *prima* che Wrangler generi questo file, si verificheranno errori bloccanti su `process.env` o `getCloudflareContext().env`. 
@@ -64,7 +64,7 @@ Per l'eliminazione di file e cartelle, attieniti a queste due regole:
 *   **Eliminazione a cascata e vincoli (ON DELETE):** In Cloudflare D1, la propagazione del `ON DELETE CASCADE` impostata in Drizzle spesso fallisce a causa della natura stateless delle connessioni (il DB solleverà `D1_ERROR: FOREIGN KEY constraint failed`). Quando crei logiche di cancellazione (Server Actions), effettua **sempre l'eliminazione esplicita** dei record figli (es. `await db.delete(children).where(...)`) **prima** di eliminare il record padre.
  
 ### 💻 Terminale Integrato e Comandi Shell (Windows CMD)
-* **Sintassi Comandi:** L'ambiente locale utilizza il terminale integrato di VS Code su Windows basato sul **Prompt dei comandi classico (cmd.exe)**. Per le operazioni fornite nel tag `<shell>`, **NON** usare cmdlet di PowerShell (es. `Rename-Item`, `Remove-Item`) e **NON** usare comandi Unix (`cp`, `rm`, `mv`). Usa sempre i comandi DOS standard come `ren` (per rinominare), `copy`, `del`, `mkdir` o `rd /s /q`.
+* **Sintassi Comandi:** L'ambiente locale utilizza il terminale integrato di VS Code su Windows basato sul **PowerShell**. Per le operazioni fornite nel tag `<shell>`, **NON** usare comandi di terminale classico integrato (cmd.exe) e **NON** usare comandi Unix.
 * **No Cambi di Stato (`cd`):** Quando fornisci comandi shell (es. per rinominare o spostare file) all'interno del tag `<shell>`, **NON usare mai** il comando `cd` per cambiare cartella. La pratica migliore, più robusta e raccomandata, è eseguire i comandi direttamente partendo dalla root. Specifica sempre i percorsi relativi in modo esplicito (es. usa `ren "src\flussi\vecchio_nome" "nuovo_nome"` anziché fare `cd` nella directory).
 
 ### 🔄 Operazioni Sequenziali sui File (File System + Editing)
@@ -124,3 +124,25 @@ Per garantire transizioni istantanee e azzerare il lag di navigazione in Next.js
 * **Nome Regola:** Obbligo Fallback `process.env` per l'ambiente locale.
 * **Soluzione:** Quando estrai variabili d'ambiente (es. Secret Keys) usando `getCloudflareContext().env`, DEVI SEMPRE inserire il fallback a `process.env.NOME_CHIAVE`. In ambiente di sviluppo locale (`next dev` con OpenNext), l'oggetto `env` di Cloudflare non viene automaticamente popolato con le variabili presenti nel file `.env.local` classico (a meno che non siano definite nel `wrangler.jsonc`), restituendo `undefined` e causando crash di autorizzazione.
 * **Pattern Obbligatorio:** `const secret = (getCloudflareContext().env as any)?.MIA_CHIAVE || process.env.MIA_CHIAVE;`
+
+### 🗄️ Database: Sincronizzazione ID e Vincoli a Cascata
+* **Nome Regola:** Obbligo `onUpdate: "cascade"` per Foreign Keys su Primary Keys mutabili (Prevenzione Split-Brain).
+* **Problema:** Nelle architetture in cui un'anagrafica (es. Utente) viene pre-creata con un ID temporaneo e successivamente aggiornata con l'ID definitivo (es. al primo login tramite Supabase/Clerk), l'operazione di `UPDATE` fallirà silenziosamente restituendo `SQLITE_CONSTRAINT_FOREIGNKEY` se esistono già dei record figli collegati a quell'ID. Questo impedisce la sincronizzazione e disallinea irrimediabilmente l'Auth dal DB.
+* **Soluzione:** Quando definisci le Foreign Key in Drizzle ORM per tabelle che puntano a entità con ID soggetti a sincronizzazione/sostituzione, dichiara SEMPRE esplicitamente l'aggiornamento a cascata: `.references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" })`.
+
+
+### 🔍 SEO Next.js App Router (Solo Siti Pubblici - IGNORARE per Gestionali/ERP)
+* **metadataBase, Canonical e OG:** In `layout.tsx` serve SEMPRE `metadataBase: new URL(...)`. MAI usare stringhe vuote (`canonical: ''`). MAI impostare `canonical: '/'` o `openGraph.url: '/'` nel layout globale (l'ereditarietà de-indicizza le sub-pagine, Next.js risolve in automatico).
+* **Titolo Homepage:** Se `layout.tsx` usa `template`, metti SEMPRE `title: { absolute: "..." }` nella home (`page.tsx`) per evitare titoli doppi/spammosi.
+* **Sitemap Freshness:** In `sitemap.ts` usa SEMPRE `lastModified: new Date()` (dinamico alla build). Mai date statiche vecchie (fermano il crawler).
+* **JSON-LD (Schema.org):** Per `LocalBusiness`, i giorni (`dayOfWeek`) DEVONO essere tradotti in INGLESE (`Monday`). Aggiungi sempre `priceRange`. Previeni crash fatali con safe-check sulle stringhe (`hours?.split('-')`).
+* **Resilienza & "Anti-Cliente":** Avvolgi SEMPRE le fetch al CMS (`getSettings`) nei layout/metadata in un `try/catch` per evitare il white-screen of death. Usa fallback SEO **hardcoded** per forzare le keyword locali vitali, proteggendo l'indicizzazione da modifiche errate del cliente sul CMS.
+
+### 📧 Resend & Email Deliverability (Anti-Spam Strict)
+* **Regole per evitare Spam Score elevato:**
+  1. **NO `mailto:`**: Mai usare `<a href="mailto:...">` se l'email coincide con il `replyTo` ma differisce dal `From` (Phishing flag). Usa `<span>{email}</span>`.
+  2. **Plain Text**: Invia SEMPRE la prop `text` (fallback) assieme a `html`.
+  3. **Struttura**: L'HTML DEVE essere una pagina completa: `<!DOCTYPE html><html><body>...</body></html>`.
+  4. **CamelCase**: Resend Node SDK >v6 usa SEMPRE `replyTo`, MAI `reply_to`.
+  5. **Disclaimer**: Aggiungi SEMPRE un footer automatico (es. "Email generata dal sito...").
+  6. **Sender Name**: Il campo `from` DEVE includere il nome reale del brand (es. `"Acconciature Paola <noreply@...>"`), MAI nomi generici come "Form Contatti" (Spam flag).
