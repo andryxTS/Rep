@@ -137,6 +137,7 @@ Per garantire transizioni istantanee e azzerare il lag di navigazione in Next.js
 * **Sitemap Freshness:** In `sitemap.ts` usa SEMPRE `lastModified: new Date()` (dinamico alla build). Mai date statiche vecchie (fermano il crawler).
 * **JSON-LD (Schema.org):** Per `LocalBusiness`, i giorni (`dayOfWeek`) DEVONO essere tradotti in INGLESE (`Monday`). Aggiungi sempre `priceRange`. Previeni crash fatali con safe-check sulle stringhe (`hours?.split('-')`).
 * **Resilienza & "Anti-Cliente":** Avvolgi SEMPRE le fetch al CMS (`getSettings`) nei layout/metadata in un `try/catch` per evitare il white-screen of death. Usa fallback SEO **hardcoded** per forzare le keyword locali vitali, proteggendo l'indicizzazione da modifiche errate del cliente sul CMS.
+* **Duplicate Content (www vs root) in Cloudflare:** In fase di deploy o check SEO, ricorda all'utente di impostare la Redirect Rule 301 (da WWW a root, esiste già un template pronto fra le Rules) su Cloudflare. Altrimenti OpenNext serve entrambi causando grave duplicate content. L'eventuale warning DNS non proxato di Cloudflare va ignorato (falso positivo coi record Worker).
 
 ### 📧 Resend & Email Deliverability (Anti-Spam Strict)
 * **Regole per evitare Spam Score elevato:**

@@ -1703,18 +1703,14 @@ def cmd_check(strict_mode=True):
         
         # --- MENU DI SCELTA ---
         print(f"\n{Fore.YELLOW}Come vuoi procedere?{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}1) Avvia processo di correzione completo (Init + Repomix) [Default]{Style.RESET_ALL}")
-        print(f"{Fore.CYAN}2) Genera solo il prompt (include eventuali modifiche recenti ai file){Style.RESET_ALL}")
+        print(f"{Fore.CYAN}1) [Default] Genera solo il prompt (include eventuali modifiche recenti ai file){Style.RESET_ALL}")
+        print(f"{Fore.CYAN}2) Avvia processo di correzione completo (Init + Repomix){Style.RESET_ALL}")
         print(f"{Fore.CYAN}3) Non fare nulla{Style.RESET_ALL}")
         
-        choice = smart_input(f"\nScelta [1]: ").strip()
+        choice = smart_input(f"\nScelta [default: 1]: ").strip()
         
         if choice in ["", "1"]:
-            # Opzione 1: Init Completo
-            cmd_init(auto_input=prompt_message_init,compress_mode=True)
-            
-        elif choice == "2":
-            # Opzione 2: Solo Prompt (Smart)
+            # Opzione 1: Solo Prompt (Smart)
             # Tenta di usare cmd_mod per includere i file modificati
             modified_found = cmd_mod(auto_input=prompt_message)
             
@@ -1725,7 +1721,11 @@ def cmd_check(strict_mode=True):
             else:
                 # cmd_mod ha già copiato il prompt arricchito con i file xml
                 pass
-                
+                     
+        elif choice == "2":
+            # Opzione 2: Init Completo
+            cmd_init(auto_input=prompt_message_init,compress_mode=True)
+
         else:
             print("Operazione annullata.")
             
