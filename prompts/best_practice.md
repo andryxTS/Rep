@@ -133,9 +133,9 @@ Per garantire transizioni istantanee e azzerare il lag di navigazione in Next.js
 
 ### 🔍 SEO Next.js App Router (Solo Siti Pubblici - IGNORARE per Gestionali/ERP)
 * **metadataBase, Canonical e OG:** In `layout.tsx` serve SEMPRE `metadataBase: new URL(...)`. MAI usare stringhe vuote (`canonical: ''`). MAI impostare `canonical: '/'` o `openGraph.url: '/'` nel layout globale (l'ereditarietà de-indicizza le sub-pagine, Next.js risolve in automatico).
-* **Titolo Homepage:** Se `layout.tsx` usa `template`, metti SEMPRE `title: { absolute: "..." }` nella home (`page.tsx`) per evitare titoli doppi/spammosi.
+* **Titoli, Meta e SERP:** La keyword principale DEVE precedere il brand. Allinea esattamente `title.default` e `description` del `layout.tsx` con i rispettivi valori dichiarati nel JSON-LD. Se `layout.tsx` usa `template`, metti SEMPRE `title: { absolute: "..." }` nella home (`page.tsx`) per evitare titoli doppi.
 * **Sitemap Freshness:** In `sitemap.ts` usa SEMPRE `lastModified: new Date()` (dinamico alla build). Mai date statiche vecchie (fermano il crawler).
-* **JSON-LD (Schema.org):** Per `LocalBusiness`, i giorni (`dayOfWeek`) DEVONO essere tradotti in INGLESE (`Monday`). Aggiungi sempre `priceRange`. Previeni crash fatali con safe-check sulle stringhe (`hours?.split('-')`).
+* **JSON-LD (Schema.org):** Includi sempre `alternateName` nel `WebSite` e `image` nel `LocalBusiness` (puntando a favicon/logo) per forzare il rich snippet sui domini nuovi. I giorni (`dayOfWeek`) DEVONO essere in INGLESE. Aggiungi sempre `priceRange`. Previeni crash con safe-check (`hours?.split('-')`).
 * **Resilienza & "Anti-Cliente":** Avvolgi SEMPRE le fetch al CMS (`getSettings`) nei layout/metadata in un `try/catch` per evitare il white-screen of death. Usa fallback SEO **hardcoded** per forzare le keyword locali vitali, proteggendo l'indicizzazione da modifiche errate del cliente sul CMS.
 * **Duplicate Content (www vs root) in Cloudflare:** In fase di deploy o check SEO, ricorda all'utente di impostare la Redirect Rule 301 (da WWW a root, esiste già un template pronto fra le Rules) su Cloudflare. Altrimenti OpenNext serve entrambi causando grave duplicate content. L'eventuale warning DNS non proxato di Cloudflare va ignorato (falso positivo coi record Worker).
 
