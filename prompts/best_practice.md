@@ -1,3 +1,14 @@
+File: `prompts/best_practice.md`
+All'interno del codebase `Rep`
+
+## REGOLE PER QUESTO FILE DELLE BEST-PRACTICE
+*   Questo file contiene il frutto della conoscenza empirica ottenuta tramite fix di errori e bug, il suo scopo è prevenirli in futuro, per farlo è da mantenere aggiornata inserendo soluzioni a problemi che si sono riscontrati e potrebbero tornare utili in futuro.
+*   **Attenzione! Queste sono istruzioni scritte dall'AI coder per l'AI coder**: vanno tenute **stringate e minimali, quasi criptiche**, non serve dare grandi spiegazioni perché:
+1. L'AI coder sa già il perché e il per come, gli basta un promemoria.
+2. La finestra contestuale è limitata, più dilunghiamo qui, più compromettiamo la qualità del lavoro dell'AI coder.
+*   Nell'aggiornare questo file bisogna essere GENERICI: non menzionare mai cose specifiche del progetto su cui si sta lavorando, anche perché la natura delle app su cui si andrà a lavorare può variare anche di molto.
+*   All'AI coder viene dato un comando (best_practice_append) per aggiungere qui nuove regole. Questo va bene solo se si tratta di cose nuove; ma se le regole possono essere integrate in uno dei paragrafetti esistenti è meglio chiedere all'utente umano di fare una sostituzione con Snippet, sapendo che questo file sta in un altro codebase (`Rep`) con url relativo: **`prompts/best_practice.md`**, perciò è da fare un XML a parte che l'utente dovrà applicare nel progetto `Rep`.
+
 ### ☁️ Regole specifiche per OpenNext Cloudflare
 *   **No Runtime Edge:** Non scrivere *mai* `export const runtime = 'edge'` nei file (es. Route Handlers o Pagine). OpenNext pacchettizza già tutto per i Workers; dichiararlo esplicitamente fa fallire il bundler di `@opennextjs/cloudflare`.
 *   **Tipizzazione Bindings:** Per usare i binding di Cloudflare (D1, KV, R2) estratti da `getCloudflareContext().env`, devi sempre dichiararli in un file globale (es. `src/cloudflare-env.d.ts`) estendendo l'interfaccia: `declare global { interface CloudflareEnv { NOME_BINDING: D1Database } }`.
@@ -138,6 +149,10 @@ Per garantire transizioni istantanee e azzerare il lag di navigazione in Next.js
 * **JSON-LD (Schema.org):** Includi sempre `alternateName` nel `WebSite` e `image` nel `LocalBusiness` (puntando a favicon/logo) per forzare il rich snippet sui domini nuovi. I giorni (`dayOfWeek`) DEVONO essere in INGLESE. Aggiungi sempre `priceRange`. Previeni crash con safe-check (`hours?.split('-')`).
 * **Resilienza & "Anti-Cliente":** Avvolgi SEMPRE le fetch al CMS (`getSettings`) nei layout/metadata in un `try/catch` per evitare il white-screen of death. Usa fallback SEO **hardcoded** per forzare le keyword locali vitali, proteggendo l'indicizzazione da modifiche errate del cliente sul CMS.
 * **Duplicate Content (www vs root) in Cloudflare:** In fase di deploy o check SEO, ricorda all'utente di impostare la Redirect Rule 301 (da WWW a root, esiste già un template pronto fra le Rules) su Cloudflare. Altrimenti OpenNext serve entrambi causando grave duplicate content. L'eventuale warning DNS non proxato di Cloudflare va ignorato (falso positivo coi record Worker).
+* **No Hardcoded WWW:** Mai assumere/hardcodare il prefisso `www.` in canonical, sitemap, metadataBase o JSON-LD. Usa SEMPRE la var d'ambiente (es. `process.env.NEXT_PUBLIC_APP_URL`) per gli url base, con fallback esplicito *senza* `www.`.
+* **Prevenzione Cannibalizzazione (Pagine Legali):** Pagine come Terms, Privacy e Cookies DEVONO avere `robots: { index: false, follow: true }` nei metadata ed essere omesse dalla `sitemap.ts`. Ricevendo link da ogni pagina tramite il footer, Google potrebbe indicizzarle erroneamente per le keyword di business rubando ranking alla Home.
+* **Sitemap Exhaustive:** In `sitemap.ts` includi sempre *tutte* le pillar pages statiche (es. `/contatti`, `/servizi`). Non limitarti alla root e alle rotte dinamiche.
+* **Robots.ts Dinamico:** L'URL della sitemap nel file `robots.ts` DEVE usare l'ENV (es. `NEXT_PUBLIC_APP_URL`). Url hardcodati qui causano errori "Cross-Domain" in Search Console se il dominio varia (es. www/no-www).
 
 ### 📧 Resend & Email Deliverability (Anti-Spam Strict)
 * **Regole per evitare Spam Score elevato:**
