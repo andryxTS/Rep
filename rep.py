@@ -54,6 +54,8 @@ PROMPT_ANTI_ESCAPE_FILE = os.path.join(PROMPTS_DIR, "anti_escape_quadre.md")
 PROMPT_GENERICO_FILE = os.path.join(PROMPTS_DIR, "generico.md")
 GLOBAL_IGNORE_FILE = os.path.join(PROMPTS_DIR, ".repomixignore.template")
 
+REVISION_PROMPT_TEXT = "Ho applicato le modifiche. Ora fai una revisione accurata e meticolosa di quanto hai fatto. Controlla se ci sono bug e omissioni. Controlla la logica, la gestione degli errori e i casi limite (edge cases).\nQuindi applica le correzioni. Ti chiederò di ripetere il processo finché non è tutto ok, per andare in produzione è molto meglio se preveniamo errori e lunghi debug, controllando bene preventivamente."
+
 # --- UTILS SISTEMA ---
 
 def cleanup_and_exit():
@@ -1155,7 +1157,7 @@ def cmd_apply():
                     print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                     continue
                 elif ui_lower in ["revisione", "rev", "r"]:
-                    pyperclip.copy("Ho applicato le modifiche. Ora fai una revisione accurata e meticolosa di quanto hai fatto. Controlla se ci sono bug e omissioni. Controlla la logica, la gestione degli errori e i casi limite (edge cases).\nQuindi applica le correzioni. Ti chiederò di ripetere il processo finché non è tutto ok, per andare in produzione è molto meglio se preveniamo errori e lunghi debug, controllando bene preventivamente.")
+                    pyperclip.copy(REVISION_PROMPT_TEXT)
                     print_success("Prompt di revisione copiato negli appunti!")
                     print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                     continue
@@ -1198,7 +1200,7 @@ def cmd_apply():
                     print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                     continue
                 elif ui_lower in ["revisione", "rev", "r"]:
-                    pyperclip.copy("Ho applicato le modifiche. Ora fai una revisione accurata e meticolosa di quanto hai fatto. Controlla se ci sono bug e omissioni. Controlla la logica, la gestione degli errori e i casi limite (edge cases).\nQuindi applica le correzioni. Ti chiederò di ripetere il processo finché non è tutto ok, per andare in produzione è molto meglio se preveniamo errori e lunghi debug, controllando bene preventivamente.")
+                    pyperclip.copy(REVISION_PROMPT_TEXT)
                     print_success("Prompt di revisione copiato negli appunti!")
                     print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                     continue
@@ -1416,9 +1418,12 @@ def cmd_apply():
                             print_warn("Comandi ignorati.")
 
                     print_success("Tutte le modifiche sono state applicate con successo.")
+                    pyperclip.copy(REVISION_PROMPT_TEXT)
+                    print(f"\n{Fore.YELLOW}👉 Il prompt per la REVISIONE è già stato copiato automaticamente negli appunti.{Style.RESET_ALL}")
+                    print(f"{Fore.YELLOW}👉 Incollalo nella chat dell'LLM per fargli verificare il lavoro svolto.{Style.RESET_ALL}")
                     print(f"\n{Fore.YELLOW}Premere INVIO per un altro XML (o 'm' mod, 'i' init, ESC per uscire).{Style.RESET_ALL}")
 
-            except ET.ParseError as e: 
+            except ET.ParseError as e:
                 print_error(f"Errore XML: {e}")
                 try:
                     with open(PROMPT_ANTI_ESCAPE_FILE, "r", encoding="utf-8") as f:
@@ -1448,7 +1453,7 @@ def cmd_apply():
                 print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                 continue
             elif ui_lower in ["revisione", "rev", "r"]:
-                pyperclip.copy("Ho applicato le modifiche. Ora fai una revisione accurata e meticolosa di quanto hai fatto. Controlla se ci sono bug e omissioni. Controlla la logica, la gestione degli errori e i casi limite (edge cases).\nQuindi applica le correzioni. Ti chiederò di ripetere il processo finché non è tutto ok, per andare in produzione è molto meglio se preveniamo errori e lunghi debug, controllando bene preventivamente.")
+                pyperclip.copy(REVISION_PROMPT_TEXT)
                 print_success("Prompt di revisione copiato negli appunti!")
                 print(f"{Fore.YELLOW}👉 Incollalo nella chat, copia la risposta e premi INVIO qui.{Style.RESET_ALL}")
                 continue
