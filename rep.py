@@ -1395,22 +1395,20 @@ def cmd_apply():
 
                         if choice == "" or choice == "1":
                             if commands_to_run:
-                                print_step("Esecuzione comandi in batch (sessione unificata)...")
-                                fd, bat_path = tempfile.mkstemp(suffix=".bat", text=True)
+                                print_step("Esecuzione comandi PowerShell (sessione unificata)...")
+                                fd, ps1_path = tempfile.mkstemp(suffix=".ps1", text=True)
                                 os.close(fd)
                                 try:
-                                    with open(bat_path, "w", encoding="utf-8") as f:
-                                        f.write("@echo off\n")
-                                        f.write("chcp 65001 >nul\n")
+                                    with open(ps1_path, "w", encoding="utf-8") as f:
+                                        f.write("$OutputEncoding = [Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n")
                                         for cmd in commands_to_run:
-                                            safe_cmd = cmd.replace('>', '^>').replace('<', '^<').replace('|', '^|').replace('&', '^&')
-                                            f.write(f"echo ^> {safe_cmd}\n")
-                                            exec_cmd = re.sub(r'(^|&&?|\|\|?)\s*(pnpm|npm|npx|yarn|bun)\b', r'\1 call \2', cmd)
-                                            f.write(f"{exec_cmd}\n")
-                                    subprocess.run(bat_path, shell=True, check=False)
+                                            safe_echo = cmd.replace("'", "''")
+                                            f.write(f"Write-Host '> {safe_echo}' -ForegroundColor Cyan\n")
+                                            f.write(f"{cmd}\n")
+                                    subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ps1_path], check=False)
                                 finally:
-                                    if os.path.exists(bat_path):
-                                        try: os.remove(bat_path)
+                                    if os.path.exists(ps1_path):
+                                        try: os.remove(ps1_path)
                                         except: pass
                             else:
                                 print_warn("Nessun comando da eseguire.")
