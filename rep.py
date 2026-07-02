@@ -94,9 +94,14 @@ def print_warn(msg): print(f"{Fore.YELLOW}⚠ {msg}{Style.RESET_ALL}")
 
 def run_command(command, capture=True):
     try:
+        # Se siamo su Windows, forziamo l'uso di PowerShell anziché del CMD
+        kwargs = {}
+        if platform.system() == "Windows":
+            kwargs["executable"] = "powershell.exe"
+
         result = subprocess.run(
             command, shell=True, check=True, text=True, capture_output=capture,
-            encoding='utf-8', errors='replace'
+            encoding='utf-8', errors='replace', **kwargs
         )
         return result.stdout.strip() if capture else ""
     except Exception as e:
@@ -1419,9 +1424,8 @@ def cmd_apply():
 
                     print_success("Tutte le modifiche sono state applicate con successo.")
                     pyperclip.copy(REVISION_PROMPT_TEXT)
-                    print(f"\n{Fore.YELLOW}👉 Il prompt per la REVISIONE è già stato copiato automaticamente negli appunti.{Style.RESET_ALL}")
-                    print(f"{Fore.YELLOW}👉 Incollalo nella chat dell'LLM per fargli verificare il lavoro svolto.{Style.RESET_ALL}")
-                    print(f"\n{Fore.YELLOW}Premere INVIO per un altro XML (o 'm' mod, 'i' init, ESC per uscire).{Style.RESET_ALL}")
+                    print_success("👉 Il prompt per la REVISIONE è già stato copiato automaticamente negli appunti.")
+                    print(f"\n{Fore.YELLOW}Premere INVIO per un altro XML (o 'm' mod, 'c' per tsc, 'i' init, ESC per uscire).{Style.RESET_ALL}")
 
             except ET.ParseError as e:
                 print_error(f"Errore XML: {e}")
