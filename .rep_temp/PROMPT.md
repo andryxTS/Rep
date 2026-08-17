@@ -1,3 +1,29 @@
+**CONTESTO E ISTRUZIONI GENERALI:** 
+Ti fornirò dei file, dovrai applicare le modifiche richieste nel modo più preciso ed efficiente possibile. 
+ 
+**FILE ALLEGATI:** 
+In allegato a questo prompt trovi un file `repomix-output.txt` contenente i file su cui lavorare (potrebbe essere un singolo file o una cartella). 
+ 
+**ISTRUZIONI:**
+Memorizza il formato di output e la struttura dei file allegati. Quando ti chiederò di effettuare delle modifiche, dovrai attenerti rigorosamente a queste regole.
+
+**PROCEDURA DA SEGUIRE:**
+* Pianifica le operazioni che dovrai eseguire, cura ogni dettaglio.
+* Scrivi questo piano in chiaro, prima di cominciare il lavoro di coding.
+* VINCOLO DI ESISTENZA DEI PATH: Prima di generare un <file> o uno <snippet>, devi obbligatoriamente verificare che il path esista esattamente come elencato nella sezione 'Directory Structure' o all'interno dei tag <file path="..."> del file repomix-output.txt fornito. Non inventare percorsi basandoti su convenzioni (es. non assumere /components/ui/ se il file è in /components/). Se un file non esiste nel contesto, non tentare di modificarlo.
+* Scrivi un piccolo riepilogo testuale con i file che dovrai modificare/aggiungere/eliminare [EDIT] / [NEW] / [DELETE]; per ognuno di questi, prima di scriverlo, verifica che il path e file esistano realmente, come suggerito al punto precedente.
+* Scrivi il nuovo codice per le pagine modificate o nuove, PER INTERO (salvo uso snippets), nel formato XML specificato sotto, **modifica solo quanto necessario** e **mantieni intatto il resto, compresi i commenti, LA FEDELTÀ ESTREMA È RICHIESTA E CRUCIALE**).
+* Dichiarazione Strategia: Nel tuo riepilogo testuale, per ogni file devi scrivere esplicitamente: "File: [nome], Righe stimate: [N], Strategia: [FULL REWRITE / SNIPPET]". Se scrivi "SNIPPET" per un file piccolo, l'operazione sarà considerata un errore.
+* Riportami dentro i tag <shell></shell> tutti i comandi a terminale (windows, integrato in VS Code) necessari per far funzionare le nuove modifiche (tralascia pnpm build o pnpm dev, quello è scontato e solitamente c'è l'ho costantemente attivo). Quando vedi che l'app si interfaccia con dei db dammi gli appositi comandi di generate e migrazione se le modifiche lo rendono necessario. Di default dammi i comandi per aggiornare il sistema in locale, perché di base lavorarerò più che altro in locale. Ad esempio se sto usando drizzle su un D1 all'interno del tag shell aggiungerai:
+   pnpm drizzle-kit generate
+   echo "y" | pnpm wrangler d1 migrations apply nome-del-db --local
+* **ASSUNZIONE DI APPLICAZIONE AVVENUTA:** Parti sempre dal presupposto che ogni singolo blocco XML che mi generi venga eseguito e applicato con successo al mio codice locale. Nelle iterazioni successive, fai in modo che i tuoi tag `<original>` cerchino il testo che tu stesso hai inserito nel turno precedente, mantenendo lo stato del codice sincronizzato con le tue stesse azioni.
+* **RECUPERO FILE OMESSI O COMPRESSI:** Nell'albero del progetto allegato, alcuni file potrebbero essere contrassegnati con "OMIT" o il loro contenuto potrebbe risultare minimizzato/compresso. **NON ESSERE PARSIMONIOSO.** Se per fare un'analisi accurata o per scrivere codice ritieni che ti serva la versione completa di determinati file, richiedili TUTTI SUBITO alla fine della tua risposta. **MEGLIO CHIEDERE UN FILE IN PIÙ CHE NON VERRÀ UTILIZZATO, PIUTTOSTO CHE FARE UN PASSAGGIO IN PIÙ DOPO.** Puoi richiederli inserendo ALLA FINE della tua risposta questo esatto blocco di codice (con 4 backtick e formato batch), usando percorsi esatti o sintassi glob (es. `**/*.ts`):
+````batch
+repomix --include path_esatto.ts,src/app/**/*.tsx,src/app/admin/*
+```` 
+ 
+**FORMATO DI OUTPUT OBBLIGATORIO:** 
 ### Formato Snippets (per piccole modifiche)
 Quando scegli per alcuni file il formato snippets, per le piccole modifiche, devi includere:
 1. in modo ASSOLUTAMENTE FEDELE (cruciale!) lo snippet di codice originale da sostituire, lo racchiuderai contornato tra 3 backtick dentro il tag <original>, 
@@ -10,8 +36,6 @@ Massima attenzione, perché il tuo output verrà elaborato automaticamente da un
 *   Usa SEMPRE `<![CDATA[ ... ]]>` per il contenuto dei file.
 *   All'interno dei CDATA, racchiudi il codice del file in un blocco Markdown standard con **3 backticks** (es: ```tsx o ```css).
 *   **Indentazione:** Mantieni l'indentazione perfetta dentro i 3 backticks. NON minificare.
-*   *   Non spezzare le righe a metà: Quando selezioni il testo per <original>, devi includere la riga per intero, dal primo carattere fino al reale ritorno a capo. Non troncare MAI una frase a metà pensando che sia sufficiente per il match.
-*   Occhio ai backlash alla fine di alcune righe nei file .md, a volte ci sono ma li ignori.
 
 **Esempio Snippet 1 (modifica righe):**
 <snippet index="1" path="src/utils.ts">
@@ -130,4 +154,4 @@ export default function ExampleTemplate({ title }: ExampleProps) {
     </shell>
 </changes>
 ````
-Fine XML
+Fine XML 

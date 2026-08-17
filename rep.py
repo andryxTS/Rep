@@ -94,14 +94,9 @@ def print_warn(msg): print(f"{Fore.YELLOW}⚠ {msg}{Style.RESET_ALL}")
 
 def run_command(command, capture=True):
     try:
-        # Se siamo su Windows, forziamo l'uso di PowerShell anziché del CMD
-        kwargs = {}
-        if platform.system() == "Windows":
-            kwargs["executable"] = "powershell.exe"
-
         result = subprocess.run(
             command, shell=True, check=True, text=True, capture_output=capture,
-            encoding='utf-8', errors='replace', **kwargs
+            encoding='utf-8', errors='replace'
         )
         return result.stdout.strip() if capture else ""
     except Exception as e:
