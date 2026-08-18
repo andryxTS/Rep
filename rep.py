@@ -1256,11 +1256,18 @@ def cmd_apply():
                 successful_snippets = []
 
                 for del_node in root.findall('delete_file'):
-                    path = del_node.get('path')
-                    if os.path.exists(path):
-                        send_to_trash(path)
-                        print_warn(f"[DEL] Rimosso (cestino): {path}")
+                    raw_p = del_node.get('path') or ""
+                    path = raw_p.strip().strip("\"'")
+                    if not path:
+                        continue
+                    norm_path = os.path.normpath(path)
+                    if os.path.exists(norm_path) or os.path.exists(path):
+                        target_path = norm_path if os.path.exists(norm_path) else path
+                        send_to_trash(target_path)
+                        print_warn(f"[DEL] Rimosso (cestino): {target_path}")
                         changes_count += 1
+                    else:
+                        print_warn(f"[DEL] File o cartella non trovato: {path}")
 
                 for file_node in root.findall('file'):
                     path = file_node.get('path')
