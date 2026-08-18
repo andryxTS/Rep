@@ -1255,6 +1255,13 @@ def cmd_apply():
                 failed_snippets = []
                 successful_snippets = []
 
+                for del_node in root.findall('delete_file'):
+                    path = del_node.get('path')
+                    if os.path.exists(path):
+                        send_to_trash(path)
+                        print_warn(f"[DEL] Rimosso (cestino): {path}")
+                        changes_count += 1
+
                 for file_node in root.findall('file'):
                     path = file_node.get('path')
                     content = clean_code_content(file_node.text or "")
@@ -1283,13 +1290,6 @@ def cmd_apply():
                         successful_snippets.append(f"- [Snippet {idx}] {path}")
                     else:
                         failed_snippets.append((path, idx))
-
-                for del_node in root.findall('delete_file'):
-                    path = del_node.get('path')
-                    if os.path.exists(path):
-                        send_to_trash(path)
-                        print_warn(f"[DEL] Rimosso (cestino): {path}")
-                        changes_count += 1
                         
                 # --- NUOVO: Gestione best_practice_append ---
                 for bp_node in root.findall('best_practice_append'):
