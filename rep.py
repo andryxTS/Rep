@@ -144,10 +144,13 @@ def send_to_trash(path):
     """Tenta di inviare il file o cartella nel cestino tramite API di sistema (Windows).
     Se fallisce o il sistema non è Windows, ripiega sull'eliminazione definitiva."""
     if platform.system() != "Windows":
-        if os.path.isdir(path):
-            shutil.rmtree(path)
-        else:
-            os.remove(path)
+        try:
+            if os.path.isdir(path):
+                shutil.rmtree(path, ignore_errors=True)
+            else:
+                os.remove(path)
+        except Exception as e:
+            print_error(f"Errore durante l'eliminazione di {path}: {e}")
         return
 
     try:
@@ -195,10 +198,13 @@ def send_to_trash(path):
             raise Exception(f"SHFileOperationW failed with code {result}")
     except Exception:
         # Fallback in caso di errore
-        if os.path.isdir(path):
-            shutil.rmtree(path)
-        else:
-            os.remove(path)
+        try:
+            if os.path.isdir(path):
+                shutil.rmtree(path, ignore_errors=True)
+            else:
+                os.remove(path)
+        except Exception as e:
+            print_error(f"Errore durante l'eliminazione di {path}: {e}")
 
 def ensure_prompts_exist():
     if not os.path.exists(PROMPTS_DIR):
@@ -476,10 +482,11 @@ def cmd_init(auto_input=None, compress_mode=None):
         print_error("Repomix fallito. File non creato.")
         return
 
-    # Sostituisce il blocco iniziale di repomix con il Tree personalizzato
-    tree_str = generate_project_tree()
-    patch_repomix_with_tree(repomix_path, tree_str)
+    # Applica prima le uncompressed rules per avere il quadro completo dei file
     apply_uncompressed_rules(repomix_path)
+    # Sostituisce il blocco iniziale di repomix con il Tree allineato ai file effettivamente inclusi
+    tree_str = generate_project_tree(repomix_path)
+    patch_repomix_with_tree(repomix_path, tree_str)
 
     # 3. Input Utente e Creazione Prompt File
     if auto_input:
@@ -877,7 +884,7 @@ def save_state():
     with open(STATE_FILE, "w") as f: json.dump(get_file_hashes(), f)
 
 # --- TREE GENERATOR ---
-def generate_project_tree():
+def generate_project_tree(repomix_filepath=None):
     sys_ignores = {".git", "node_modules", ".next", ".open-next", "dist", "build", "out", ".rep_temp", "__pycache__", ".venv", "venv", ".wrangler", ".idea", ".vscode"}
     sys_unignores = set()
     
@@ -894,7 +901,7 @@ def generate_project_tree():
     repo_ignores = set()
     repo_unignores = set()
     
-    for ignore_file in[GLOBAL_IGNORE_FILE, REPOMIX_IGNORE]:
+    for ignore_file in [GLOBAL_IGNORE_FILE, REPOMIX_IGNORE]:
         if os.path.exists(ignore_file):
             try:
                 with open(ignore_file, "r", encoding="utf-8") as f:
@@ -905,7 +912,22 @@ def generate_project_tree():
                             else: repo_ignores.add(line)
             except: pass
 
-    tree_lines =[]
+    included_files = set()
+    if repomix_filepath and os.path.exists(repomix_filepath):
+        try:
+            with open(repomix_filepath, "r", encoding="utf-8") as f:
+                rep_content = f.read()
+            for m in re.finditer(r'<file\s+path=["\']([^"\']+)["\']>', rep_content):
+                p = m.group(1).strip().replace('/', os.sep).replace('\\', os.sep)
+                norm_p = os.path.normpath(p)
+                if norm_p.startswith("." + os.sep):
+                    norm_p = norm_p[2:]
+                included_files.add(norm_p)
+        except Exception:
+            pass
+
+    has_explicit_included = len(included_files) > 0
+    tree_lines = []
     
     def is_sys_ignored(path, name):
         path = os.path.normpath(path)
@@ -925,13 +947,13 @@ def generate_project_tree():
             if match_pattern(path, name, p): return True
         return False
 
-    def walk(current_dir, prefix="", parent_omitted=False):
+    def walk(current_dir, prefix=""):
         try:
             entries = list(os.scandir(current_dir))
         except PermissionError:
             return
 
-        valid_entries =[]
+        valid_entries = []
         for e in entries:
             rel_path = os.path.relpath(e.path, start=".")
             if not is_sys_ignored(rel_path, e.name):
@@ -945,20 +967,31 @@ def generate_project_tree():
             connector = "└── " if is_last else "├── "
             
             rel_path = os.path.relpath(e.path, start=".")
-            
-            is_omitted = False
-            currently_omitted = parent_omitted
-            
-            if not parent_omitted and is_repo_ignored(rel_path, e.name):
-                is_omitted = True
-                currently_omitted = True
-                
-            omit_label = " OMIT" if is_omitted else ""
-            tree_lines.append(f"{prefix}{connector}{e.name}{'/' if e.is_dir() else ''}{omit_label}")
+            norm_rel_path = os.path.normpath(rel_path)
+            if norm_rel_path.startswith("." + os.sep):
+                norm_rel_path = norm_rel_path[2:]
             
             if e.is_dir():
+                if has_explicit_included:
+                    prefix_dir = norm_rel_path + os.sep
+                    has_included_children = any(inc == norm_rel_path or inc.startswith(prefix_dir) for inc in included_files)
+                    is_omitted = not has_included_children
+                else:
+                    is_omitted = is_repo_ignored(norm_rel_path, e.name)
+                    
+                omit_label = " OMIT" if is_omitted else ""
+                tree_lines.append(f"{prefix}{connector}{e.name}/{omit_label}")
+                
                 ext = "    " if is_last else "│   "
-                walk(e.path, prefix + ext, currently_omitted)
+                walk(e.path, prefix + ext)
+            else:
+                if has_explicit_included:
+                    is_omitted = norm_rel_path not in included_files
+                else:
+                    is_omitted = is_repo_ignored(norm_rel_path, e.name)
+                    
+                omit_label = " OMIT" if is_omitted else ""
+                tree_lines.append(f"{prefix}{connector}{e.name}{omit_label}")
 
     project_name = os.path.basename(os.path.abspath("."))
     tree_lines.append(f"{project_name}/")
@@ -973,22 +1006,25 @@ def patch_repomix_with_tree(filepath, tree_str):
     with open(filepath, "r", encoding="utf-8") as f:
         content = f.read()
         
-    files_idx = content.find("<files>")
-    if files_idx != -1:
-        files_content = content[files_idx:]
-        new_content = (
-            "<project_tree>\n"
-            "Questa e' la struttura completa del progetto (esclusi file ignorati da .gitignore e build folder).\n"
-            "Usa questo tree per comprendere l'architettura anche per i file il cui contenuto e' stato omesso per risparmiare token.\n"
-            "Nota: Le cartelle e i file contrassegnati con OMIT sono presenti nel progetto ma il loro contenuto e' stato omesso nel repomix. Se il progetto e' stato esportato in modalita' compressa, i file presenti potrebbero essere minimizzati. Sentiti libero di richiedere la versione integrale di qualsiasi file ti serva, senza parsimonia.\n"
-            "<![CDATA[\n"
-            f"{tree_str}\n"
-            "]]>\n"
-            "</project_tree>\n\n"
-            f"{files_content}"
-        )
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(new_content)
+    files_match = re.search(r'<files(?:\s+[^>]*)?>', content)
+    if files_match:
+        files_content = content[files_match.start():]
+    else:
+        files_content = "<files>\n</files>"
+
+    new_content = (
+        "<project_tree>\n"
+        "Questa e' la struttura completa del progetto (esclusi file ignorati da .gitignore e build folder).\n"
+        "Usa questo tree per comprendere l'architettura anche per i file il cui contenuto e' stato omesso per risparmiare token.\n"
+        "Nota: Le cartelle e i file contrassegnati con OMIT sono presenti nel progetto ma il loro contenuto e' stato omesso nel repomix. Se il progetto e' stato esportato in modalita' compressa, i file presenti potrebbero essere minimizzati. Sentiti libero di richiedere la versione integrale di qualsiasi file ti serva, senza parsimonia.\n"
+        "<![CDATA[\n"
+        f"{tree_str}\n"
+        "]]>\n"
+        "</project_tree>\n\n"
+        f"{files_content}"
+    )
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(new_content)
 
 def apply_uncompressed_rules(repomix_filepath):
     config_path = "rep.config.json"
@@ -1964,9 +2000,9 @@ def cmd_new():
         print_error("Repomix fallito.")
         return
 
-    tree_str = generate_project_tree()
-    patch_repomix_with_tree(repomix_path, tree_str)
     apply_uncompressed_rules(repomix_path)
+    tree_str = generate_project_tree(repomix_path)
+    patch_repomix_with_tree(repomix_path, tree_str)
 
     # I file sono garantiti da ensure_prompts_exist()
     with open(PROMPT_FORMATO_OUTPUT, "r", encoding="utf-8") as f: 
