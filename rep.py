@@ -467,7 +467,7 @@ def cmd_init(auto_input=None, compress_mode=None):
             f.write("node_modules/**\n.git/**\n.next/**\ndist/**\nbuild/**\npackage-lock.json\npnpm-lock.yaml\n**/*.pyc")
     
     # Output diretto nel file temporaneo
-    cmd = f"repomix . --style xml --output {repomix_path} --quiet"
+    cmd = f'repomix . --style xml --output "{repomix_path}" --quiet'
     if compress_mode:
         cmd += " --compress"
     run_command(cmd, capture=False) # Mostra log a video
@@ -1079,9 +1079,9 @@ def cmd_generic(file_pattern=None):
     print_step("Esecuzione Repomix (Modalità Generica)...")
     
     # In modalità generica esportiamo i file crudi e non compressi
-    cmd = f"repomix . --style xml --output {repomix_path} --quiet"
+    cmd = f'repomix . --style xml --output "{repomix_path}" --quiet'
     if file_pattern:
-        cmd += f" --include \"{file_pattern}\""
+        cmd += f' --include "{file_pattern}"'
         
     run_command(cmd, capture=False)
 
@@ -1776,7 +1776,7 @@ def cmd_ignore():
     CURRENT_TEMP_DIR = setup_temp_dir()
     temp_repomix_out = os.path.join(CURRENT_TEMP_DIR, "structure_check.xml")
     
-    run_command(f"repomix --style xml --output {temp_repomix_out} --quiet", capture=False)
+    run_command(f'repomix --style xml --output "{temp_repomix_out}" --quiet', capture=False)
 
     file_list_str = ""
     if os.path.exists(temp_repomix_out):
@@ -1787,7 +1787,10 @@ def cmd_ignore():
                 file_list_str = match.group(1).strip()
     
     if not file_list_str:
-        print_error("Impossibile estrarre la struttura dei file da Repomix.")
+        file_list_str = generate_project_tree()
+
+    if not file_list_str:
+        print_error("Impossibile estrarre la struttura dei file da Repomix o dal filesystem.")
         # Pulizia anche in caso di errore
         if os.path.exists(temp_repomix_out): os.remove(temp_repomix_out)
         return
@@ -1955,7 +1958,7 @@ def cmd_new():
          with open(REPOMIX_IGNORE, "w") as f:
             f.write("node_modules/**\n.git/**\n.next/**\ndist/**\nbuild/**\npackage-lock.json\npnpm-lock.yaml\n**/*.pyc")
 
-    run_command(f"repomix . --style xml --output {repomix_path} --quiet", capture=False)
+    run_command(f'repomix . --style xml --output "{repomix_path}" --quiet', capture=False)
     
     if not os.path.exists(repomix_path):
         print_error("Repomix fallito.")
